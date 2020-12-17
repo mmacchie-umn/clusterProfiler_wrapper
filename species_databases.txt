@@ -1,0 +1,12 @@
+msig_species	db	KEGG_species	reactome_species
+Bos taurus	org.Bt.eg.db	bta
+Caenorhabditis elegans	org.Ce.eg.db	cel	celegans
+Canis lupus familiaris	org.Cf.eg.db	cfa	canine
+Danio rerio	org.Dr.eg.db	dre	zebrafish
+Drosophila melanogaster	org.Dm.eg.db	dme	fly
+Gallus gallus	org.Gg.eg.db	gga
+Homo sapiens	org.Hs.eg.db	hsa	human
+Mus musculus	org.Mm.eg.db	mmu	mouse
+Rattus norvegicus	org.Rn.eg.db	rno	rat
+Saccharomyces cerevisiae	org.Sc.eg.db	sce	yeast
+Sus scrofa	org.Ss.eg.db	ssc
