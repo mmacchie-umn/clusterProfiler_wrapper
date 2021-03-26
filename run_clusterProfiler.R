@@ -14,7 +14,7 @@
 # New package additions: "tibble","msigdbr","openxlsx"
 
 # v1.6
-# GSEA preranking method option is added
+# GSEA preranking method option is added (default is to rank by log2(fold change))
 
 
 
@@ -99,8 +99,8 @@ option_list = list(
 	      help="Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb,c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp"),
  make_option("--prerankMethod",
               type="character",
-              default="pval",
-	      help="Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run.")
+              default="lfc",
+	      help="Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if PValue column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the rank method run.")
 )
 
 
@@ -627,7 +627,7 @@ if (msigdbs_list == "all"){
 }
 
 if (input_gsea_sorting_method == "pval"){
-if (c("FDR","log2FC") %in% colnames(t_d1)){
+if (c("PValue","log2FC") %in% colnames(t_d1)){
 method="pval_sign"
 }else{
 method="lfc"
@@ -637,7 +637,7 @@ method="lfc"
 }
 
 parameters_towrite <- rbind(parameters_towrite,c("GSEA ranking method:",method))
-sorted_preranked_df <- tk_create_prerank(t_d1,method=method,logFC_col = which(colnames(t_d1) == "log2FC"),padj_col = which(colnames(t_d1) == "FDR"))
+sorted_preranked_df <- tk_create_prerank(t_d1,method=method,logFC_col = which(colnames(t_d1) == "log2FC"),padj_col = which(colnames(t_d1) == "PValue"))
 
 
 
