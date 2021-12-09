@@ -13,3 +13,5 @@ v1.3
 - Added option to enable/disable kegg pathview (default = FALSE)
 - Writes out parameter file with all the clusterProfiler wrapper options used
 - cnet and emap plot sizes scale better with number of terms
+
+
