@@ -1,4 +1,10 @@
-# clusterProfiler_wrapper v1.6
+# ClusterProfiler Wrapper 1.6
+
+Wrapper can now perform GSEA on an edgeR differentially expressed gene results table by including the option: --gsea TRUE. By default, genes will be ranked by their log2FC.
+Note: GSEA should only be run on full edgeR results tables that have all tested genes, not only the significant ones.
+
+
+# clusterProfiler_wrapper v1.6 updates
 
 v1.6
 - GSEA preranking method option is added
