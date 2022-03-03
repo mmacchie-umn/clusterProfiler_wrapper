@@ -15,10 +15,10 @@ Note: GSEA should only be run on full edgeR results tables that have all tested 
 
 Rscript run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
 
-Please note that by default, GO, KEGG, and Reactome over-representation analysis it will perform the following:
+Please note that by default, GO, KEGG, and Reactome over-representation analysis will perform the following:
 1) Subsets the DEG table by FDR (default = 0.05, can set with "-p" option) and fold change (default = 1X, can change with "-c" option)
-2) Takes the top 200 genes by sorting FDRs by fold change (default = 200 genes, can set number of genes with "-g" option)
-3) Will plot all significantly enriched ontology terms (can set number of terms to plot with "-n", and it will plot most significant by FDR. Can set the significance threshold for ontology terms with "-a")
+2) Uses the top 200 genes after sorting genes by absolute fold change (default = 200 genes, can set number of genes with "-g" option) for over-representation analysis
+3) Will plot ALL significantly enriched ontology terms (can set number of terms to plot with "-n", and it will plot most significant by FDR. Can set the significance threshold for ontology terms with "-a")
 
 
 
