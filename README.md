@@ -3,12 +3,17 @@
 Wrapper can now perform GSEA on an edgeR differentially expressed gene results table by including the option: --gsea TRUE. By default, genes will be ranked by their log2FC.
 Note: GSEA should only be run on full edgeR results tables that have all tested genes, not only the significant ones.
 
+#### Required arguments:
+1) DEG table in edgeR format (-f). Tab-delimited text file.
+2) genus species name (-s). Genus and species should be separated by an underscore ("_")
+3) gene name format (-i). Usually in one of the following formats: ENSEMBL, ENTREZ, SYMBOL
+
 
 # Example commands
 
 ### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis and KEGG pathview analysis
 
-Rscript run_clusterProfiler.R -f Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
+Rscript run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
 
 Please note that by default, GO, KEGG, and Reactome over-representation analysis it will perform the following:
 1) Subsets the DEG table by FDR (default = 0.05, can set with "-p" option) and fold change (default = 1X, can change with "-c" option)
