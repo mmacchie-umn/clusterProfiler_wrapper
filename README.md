@@ -14,9 +14,9 @@
 
 # Example commands
 
-### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis and KEGG pathview analysis
+### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis 
 
-Rscript run_clusterProfiler.R -f Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
+Rscript run_clusterProfiler.R -f Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL 
 
 
 
