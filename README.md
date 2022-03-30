@@ -1,7 +1,9 @@
+
 # ClusterProfiler Wrapper 2.0
 
 Wrapper can now perform GSEA on an edgeR differentially expressed gene results table by including the option: --gsea TRUE. By default, genes will be ranked by their log2FC.
 Note: GSEA should only be run on full edgeR results tables that have all tested genes, if less than 10,000 tested genes (or < 3,000 tested genes for S. cerevisiae) are detected in the table, GSEA will be automatically disabled 
+
 
 #### Required arguments:
 1) DEG table in edgeR format (-f). Tab-delimited text file.
@@ -15,6 +17,7 @@ Note: GSEA should only be run on full edgeR results tables that have all tested 
 
 
 # Example commands
+
 
 ### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis and KEGG pathview analysis
 
@@ -43,5 +46,14 @@ v1.3
 - Added option to enable/disable kegg pathview (default = FALSE)
 - Writes out parameter file with all the clusterProfiler wrapper options used
 - cnet and emap plot sizes scale better with number of terms
+
+
+=======
+### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis 
+
+Rscript run_clusterProfiler.R -f Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL 
+
+
+See the “clusterProfiler_wrapper_intro.pdf" for more details on the clusterProfiler wrapper and for examples on how to run the wrapper.
 
 
