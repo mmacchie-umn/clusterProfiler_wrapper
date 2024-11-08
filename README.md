@@ -1,7 +1,11 @@
 
 # ClusterProfiler Wrapper 2.1
 
-The clusterprofiler wrapper is an R script that can be run from the commandline on the MSI. It uses the clusterprofiler R package functions under-the-hood to streamline pathway analysis (over-representation analysis and GSEA) after bulk RNA-seq differential gene expression testing.
+The clusterprofiler wrapper is an R script that can be run from the commandline on the MSI. It uses the clusterprofiler R package functions under-the-hood to streamline pathway analysis (over-representation analysis and GSEA) when provided a bulk RNA-seq differential gene expression test results table.
+
+For ORA, it will take the top 200 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
+
+For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the '--msigdbs' option in the Options section.
 
 ### Required arguments:
 The wrapper script requires three arguments to perform over-representation analysis (ORA) againt pathways in three databases:
@@ -9,38 +13,58 @@ The wrapper script requires three arguments to perform over-representation analy
 2) The name (genus_species) of the organism the genes in the DEG table correspond to. The organism name must be in the format "Genus_species", where Genus is capitalized and species is lowercase (e.g. Homo_sapiens, Mus_musculus, Canis_lupus_familiaris).
 3) Gene ID format. If in gene symbol format, use "SYMBOL". If ENSEMBL, use "ENSEMBL". If Entrez, used "ENTREZID".
 
-run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> [options]
+**Usage:**  
 
-Important default settings for ORA:
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> [options]
+
+**Important default settings for ORA:**   
+
 The script will:
 1) subset the DEG table by FDR (default = 0.05, can change this value with "-p" option) and fold change (default = 1X, can change with "-c" option)
 2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with "-g" option).
-3) plots ALL significantly enriched ontology terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with "-a").
+3) the top 200 genes will be used for ORA with GO, KEGG, and REACTOME pathways. Default significance cutoffs for enriched pathway terms is Pvalue < 0.05 (can be modified with "-a" option)
+4) plots ALL significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with "-a").
 
-=======
+--- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-In order to perform GSEA, include "--GSEA TRUE" in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include "--prerankMethod pval" in the command.
+To perform GSEA, include "--GSEA TRUE" in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include "--prerankMethod pval" in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
-run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE
 
 #### Example command to run GSEA (ranking genes by -log(Pval)*FC direction):
-run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval
 
-=======
+#### Example command to run GSEA (ranking genes by -log(Pval)*FC direction) against pathways in the HALLMARK, KEGG, GO, REACTOME databases:
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval --msigdb ,c2_cp_kegg,c5_go_bp,c2_cp_reactome
+
+
+**Important default settings for GSEA:**   
+The GSEA code will:
+1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the "--prerankMethod pval" option.  
+2) Perform GSEA against the Hallmark collection by default. Can change the database with the "--msigdb" option. To run it against all databases, use "--msigdb all" or provide a comma-separated list of databases (e.g. --msigdb .
+3) Generates GSEAplots, doplots, and GSEA tables of the results.
+
+
+Note: This may not work well for organisms that are not human and mouse.
+
+--- 
+
 ### KEGG Pathview:
 To make KEGG pathview plots from the KEGG ORA results, add "--keggpathview TRUE" to the command.
 
 #### Example command to run ORA + KEGG pathview
-run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
+	run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
 
-=======
+--- 
+
 ### ClusterProfiler wrapper options:
 
 Usage: run_clusterProfiler.R [options] <DEG_file.txt> <species_name> <GeneID_format>
 
 Options:
+
 	-d CHARACTER, --dir=CHARACTER
 		project directory
 
@@ -81,7 +105,7 @@ Options:
 		Show this help message and exit
 
 
-=======
+--- 
 # clusterProfiler_wrapper version updates
 
 v2.1
@@ -111,12 +135,5 @@ v1.3
 - cnet and emap plot sizes scale better with number of terms
 
 
-=======
-### To run top 200 D. melanogaster genes (in gene SYMBOL format) through GO, KEGG, and Reactome over-representation analysis 
-
-Rscript run_clusterProfiler.R -f Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL 
-
-
-See the “clusterProfiler_wrapper_intro.pdf" for more details on the clusterProfiler wrapper and for examples on how to run the wrapper.
-
+--- 
 
