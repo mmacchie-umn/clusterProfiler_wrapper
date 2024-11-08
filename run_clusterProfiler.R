@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+# clusterProfiler Wrapper version 2.0.1
+
 # Updates to clusterProfiler wrapper:
 # v1.3
 # Added option to enable/disable kegg pathview (default = FALSE) since it takes so long to run
@@ -23,11 +25,33 @@
 # Added data set screening functions. Add try statements to try GSEA with each msigdb. Adds "ggnewscale" package dependency for enrichplot. 
 # Fixed KEGG enrich issues for D. melanogaster
 
+# v2.0.1
+# Fixed issues with pairwise_termsim() failure by adding try statements
+
+# v2.1
+# Development version of clusterProfiler vXXX. Kegg_enrich functions now work
+# Added universe for GO/KEGG
+# Use pval instead of FDR as default for GSEA 
+#	[] Change in the options menu
+#	[] 
+
+# v2.1-rocky - may 3, 2024
+# Modified .libPath to new location
+# Writes out RDS objects for the KEGG, GO, and Reactome ORAs
+# Added a try() statement around the kegg pathview function (https://support.bioconductor.org/p/9154314/)
+
+.libPaths(c("/panfs/jay/groups/0/riss/public/clusterProfilerWrapper2.1_rocky8/R/x86_64-pc-linux-gnu-library/4.3",.libPaths()))
+
 #######################################################################
-# Install and load required R packages
+# Parse options
 #######################################################################
 
-req_pkgs <- list("tidyverse","clusterProfiler","RColorBrewer","glue","msigdbr","pathview","readr","stringr","enrichplot","ggplot2","ReactomePA","tibble","msigdbr","openxlsx","DOSE","ggnewscale")
+# Clear out any objects from workspace
+rm(list = ls(all.names = TRUE))
+
+
+# check if optparse is installed
+req_pkgs <- list("optparse")
 
 for (i in req_pkgs){
   if (i %in% rownames(installed.packages())){
@@ -40,126 +64,126 @@ for (i in req_pkgs){
 
 
 
-#######################################################################
-# Parse options
-#######################################################################
-
-# Clear out any objects from workspace
-rm(list = ls(all.names = TRUE))
-
-
 library("optparse",verbose=FALSE,quietly=TRUE)
 option_list = list(
-  make_option(c("-f", "--file"),
-              type="character",
-              default=NULL,
-              help="Input DE expression result file name (Required)",
-              metavar="character"),
-  make_option(c("-s","--species"),
-              type="character",
-              default=NULL,
-              help="species name (Required) - underscores should replace spaces. eg. Canis_lupus_familiaris ",
-              metavar="character"),
-  make_option(c("-d","--dir"),
-              type="character",
-              default="./",
-              help="project directory",metavar="character"),
-  make_option(c("-i","--geneIDtype"),
-              type="character",
-              default="ENSEMBL",
-              help="Either ENSEMBL,SYMBOL,ENTREZ...",metavar="character"),
-  make_option(c("-n","--num_top_terms"),
-              type="numeric",
-              default="Inf",
-              help="Report top N ontology terms",metavar="character"),
-   make_option(c("-g","--numDEGs"),
-              type="numeric",
-              default="200",
-              help="Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default.",metavar="character"),
-  make_option(c("-p","--FDRGenes"),
-              type="numeric",
-              default="0.05",
-              help="FDR cutoff used for differentially expressed genes",metavar="character"),
-  make_option(c("-a","--pvalueOnt"),
-              type="numeric",
-              default="0.05",
-              help="p-value cutoff used for ontology term enrichment test",metavar="character"),
-  make_option(c("-c","--foldchange"),
-              type="numeric",
-              default="1",
-              help="Log2(fold change) cutoff for differentially expressed genes",metavar="character"),
- make_option(c("-b","--gene_ontology"),
-              type="character",
-              default="BP",
-              help="Biological process (BP), Cellular Component (CC), Molecular function (MF), or all ontologies (ALL)",metavar="character"),
- make_option("--keggpathview",
-	      default=FALSE,
-	      help="Enable KEGG pathview plots for KEGG terms (TRUE/FALSE)"),
- make_option("--gsea",
-	      default=FALSE,
-	      help="Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigDBs option for other available databases."),
- make_option("--msigdbs",
-	      type="character",
-	      default="h",
-	      help="Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb,c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp"),
- make_option("--prerankMethod",
-              type="character",
-              default="lfc",
-	      help="Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run.")
+	make_option(c("-d","--dir"),
+			type="character",
+			default="./clusterProfiler_results/",
+			help="project directory",metavar="character"),
+	make_option(c("-n","--num_top_terms"),
+			type="numeric",
+			default="Inf",
+			help="Report top N ontology terms",metavar="character"),
+	make_option(c("-g","--numDEGs"),
+			type="numeric",
+			default="200",
+			help="Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default.",metavar="character"),
+	make_option(c("-p","--FDRGenes"),
+			type="numeric",
+			default="0.05",
+			help="FDR cutoff used for differentially expressed genes",metavar="character"),
+	make_option(c("-a","--pvalueOnt"),
+			type="numeric",
+			default="0.05",
+			help="p-value cutoff used for ontology term enrichment test. Default = 0.05",metavar="character"),
+	make_option(c("-c","--foldchange"),
+			type="numeric",
+			default="1",
+			help="absolute log2(fold change) cutoff for differentially expressed genes. Default is log2FC = 1.",metavar="character"),
+	make_option(c("-b","--gene_ontology"),
+			type="character",
+			default="BP",
+			help="Biological process (BP), Cellular Component (CC), Molecular function (MF), or all ontologies (ALL)",metavar="character"),
+	make_option("--keggpathview",
+			default=FALSE,
+			help="Enable KEGG pathview plots for KEGG terms (TRUE/FALSE)"),
+	make_option("--gsea",
+			default=FALSE,
+			help="Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigDBs option for other available databases."),
+	make_option("--msigdbs",
+			type="character",
+			default="h",
+			help="Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp"),
+	make_option("--prerankMethod",
+			type="character",
+			default="lfc",
+			help="Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run."),
+	make_option("--numPermutations",
+			type="numeric",
+			default="10000",
+			help="Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000.",metavar="character")
 )
 
 
-opt_parser = OptionParser(option_list=option_list);
-opt = parse_args(opt_parser);
+# Positional arguments Required: argument 1 = file, argument 2 = species name, argument 3 =  gene ID type
+opt_parser = OptionParser(usage = "%prog [options] DEG_file.txt species_name(e.g. Homo_sapiens) GeneID_format(e.g. SYMBOL, ENSEMBL, ENTREZ)", option_list=option_list);
+opt = parse_args(opt_parser, positional_arguments = 3,print_help_and_exit=TRUE);
 
-if (is.null(opt$file)){
-  print_help(opt_parser)
-  stop("DEG results table file is not specified (-f).", call.=FALSE)
+#print(opt)
+
+
+#######################################################################
+# Install and load required R packages
+#######################################################################
+
+
+req_pkgs <- list("tidyverse","clusterProfiler","RColorBrewer","glue","msigdbr","pathview","readr","stringr","enrichplot","ggplot2","ReactomePA","tibble","msigdbr","openxlsx","DOSE","ggnewscale","funr","optparse")
+
+for (i in req_pkgs){
+  if (i %in% rownames(installed.packages())){
+    library(i,character.only = TRUE,verbose=FALSE,quietly=TRUE)
+  }else{
+    BiocManager::install(i,character.only = TRUE)
+    library(i,character.only = TRUE,verbose=FALSE,quietly=TRUE)
+  }
 }
 
-if (is.null(opt$species)){
-  print_help(opt_parser)
-  stop("No species is specified (-s). Provide genus species name with underscores. eg. Mus_musculus or Canus_lupus_familiaris.", call.=FALSE)
-}
+options(ggrepel.max.overlaps = Inf)
+
 
 #######################################################################
 # Set parameters
 #######################################################################
 
 # DEG results file
-DEfile <-opt$file
-# Number of Ontology terms to report
-num_terms <- opt$num_top_terms
-# gene ID type -- ENSEMBL, SYMBOL, ENTREZ, etc
-gt <- opt$geneIDtype
-# User-specified DE gene p-value cutoff (default = 0.05)
-pv <- opt$FDRGenes
-# Ontology term p-value cutoff (default = 0.05)
-pv_ont <- opt$pvalueOnt
-# User-specified DE gene log2 fold change cutoff (default = 1X)
-fold_change <-opt$foldchange
-# Number of DEGs to use for ontology analysis (default = top 200 genes) 
-num_genes <- opt$numDEGs
-# Gene Ontology branch - BP, CC, MF or ALL (default = BP)
-go_ont <- opt$gene_ontology
+DEfile <-opt$args[1]
 # Species
-species = opt$species
+species = opt$args[2]
 species = gsub("_"," ",species)
+# gene ID type -- ENSEMBL, SYMBOL, ENTREZ, etc
+gt <- opt$args[3]
+
+# Number of Ontology terms to report
+num_terms <- opt$options$num_top_terms
+# User-specified DE gene p-value cutoff (default = 0.05)
+pv <- opt$options$FDRGenes
+# Ontology term p-value cutoff (default = 0.05)
+pv_ont <- opt$options$pvalueOnt
+# User-specified DE gene log2 fold change cutoff (default = 1X)
+fold_change <-opt$options$foldchange
+# Number of DEGs to use for ontology analysis (default = top 200 genes) 
+num_genes <- opt$options$numDEGs
+# Gene Ontology branch - BP, CC, MF or ALL (default = BP)
+go_ont <- opt$options$gene_ontology
+
 # Enable KEGG Pathview
-enable_KEGG_pathview <- opt$keggpathview
+enable_KEGG_pathview <- opt$options$keggpathview
 # Enable GSEA
-enable_GSEA <- opt$gsea
+enable_GSEA <- opt$options$gsea
 # MsigDBs
-msigdbs_string <- opt$msigdbs
-if (grepl(",",msigdbs_string, fixed = TRUE)){
+msigdbs_string <- opt$options$msigdbs
+if (grepl(",",msigdbs_string, fixed = TRUE) == TRUE){
 msigdbs_list <- str_split(msigdbs_string,',')[[1]]
 }else{
 msigdbs_list <- msigdbs_string
 }
 print(enable_GSEA)
 print(msigdbs_string)
-input_gsea_sorting_method=opt$prerankMethod
+print(msigdbs_list)
+input_gsea_sorting_method=opt$options$prerankMethod
+nPerm <- opt$options$numPermutations
 
+print(nPerm)
 
 print("DEG file")
 DEfile
@@ -167,7 +191,7 @@ print("Number of Ontology terms to report")
 num_terms
 print("gene ID type -- ENSEMBL, SYMBOL, ENTREZ, etc")
 gt
-print("User-specified DE gene p-value cutoff (default = 0.05)")
+print("User-specified DE gene FDR cutoff (default = 0.05)")
 pv
 print("Ontology term p-value cutoff (default = 0.05)")
 pv_ont
@@ -206,7 +230,8 @@ colnames(parameters_towrite) <- c("parameter","setting")
 # Species - set up species databases for GO, KEGG, Reactome, msigdb and load organism R library
 #######################################################################
 
-dbs <- read.delim("species_databases.txt",sep="\t",row.names = "msig_species")
+module_dir <- dirname(sys.script())
+dbs <- read.delim(paste0(module_dir,"/species_databases.txt"),sep="\t",row.names = "msig_species")
 # shows all species
 print(rownames(dbs))
 # save msig species library as "orgdb"
@@ -224,7 +249,7 @@ if (orgdb %in% rownames(installed.packages())){
   library(orgdb,character.only = TRUE)
 }
 
-source("dataset_screen.R")
+source(paste0(module_dir,"/dataset_screen.R"))
 #######################################################################
 # Load DEG results table
 #######################################################################
@@ -238,6 +263,9 @@ col_indices <- identify_columns(d1)
 colnames(d1)[col_indices$Gene] <- "gene"
 colnames(d1)[col_indices$LFC] <- "log2FC"
 colnames(d1)[col_indices$PVal] <- "FDR"
+
+print("Update DEG column headers:")
+head(d1)
 
 # Check log2FC column
 validate_lfc(d1$log2FC)
@@ -262,342 +290,31 @@ print(paste0("Number of genes in results table= ",dim(d1_merged)[1]))
 # subset genes on FDR
 d1_merged <- d1_merged[(d1_merged$FDR <= pv),] 
 print(paste0("Number of genes in results table after applying FDR cut-off= ",dim(d1_merged)[1]))
-
+#print(d1_merged)
 
 #######################################################################
 # Set working directory for the analysis
 #######################################################################
 
 # Set R working directory
-project_dir <- opt$dir
-curr_dir <- getwd()
+project_dir <- opt$options$dir
 # Set up output directory and filename prefix
-out_dir <- glue("{project_dir}/clusterProfiler_results")
+out_dir <- project_dir
 # Create output directory
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = TRUE)}
 # Create KEGG pathview directory in output directory
+if (enable_KEGG_pathview == TRUE){
 kegg_path_dir <- glue("{out_dir}/kegg_pathview/")
 if (!dir.exists(kegg_path_dir)) {dir.create(kegg_path_dir, recursive = TRUE)}
-
-
-#######################################################################
-# Define dotplot image resizing function
-#######################################################################
-
-adjust_image_dims_dp2 <- function(enrichment_dp,num_terms_user){
-  test <- enrichment_dp$data
-    mlendes <- max(str_length(test$Description))
-    # calculate width
-    new_width=0.09*(mlendes)+2.75
-    if (new_width < 7){
-      new_width=7}
-    # calculate height
-    new_height=0.124*(num_terms_user)+2.98
-    #new_height=0.124*(num_terms)+2.98
-    if (new_height < 3){
-      new_height=3}
-    x <- list("new_width"=new_width,"new_height"=new_height)
-    return(x)
 }
 
-adjust_image_dims_dp <- function(enrichment_table,num_terms_user){
-  test <- enrichment_table@result
-  test <- test[test$pvalue <= pv_ont,]
-  if (dim(test)[1] >= 1){
-    if (num_terms_user == Inf){
-    num_terms <- dim(test)[1]
-    }
-    if (num_terms_user > dim(test)[1]){
-    num_terms <- dim(test)[1]
-    }
-    if (num_terms_user < dim(test)[1]){
-    num_terms <- num_terms_user 
-    }
-    mlendes <- max(str_length(test$Description))
-    # calculate width
-    new_width=0.09*(mlendes)+2.75
-    if (new_width < 7){
-      new_width=7}
-    # calculate height
-    new_height=0.124*(num_terms)+2.98
-    if (new_height < 3){
-      new_height=3}
-    x <- list("new_width"=new_width,"new_height"=new_height)
-    return(x) 
-  }
-}
-
-adjust_image_dims_emap <- function(enrichment_table){
-  test <- enrichment_table@result
-  test <- test[test$pvalue <= pv_ont,]
-  if (dim(test)[1] >= 1){
-    num_terms <- dim(test)[1]
-    # calculate width
-    new_width=0.05*(num_terms)+6.93 # old scaling factor = 0.105
-    new_height=0.05*(num_terms)+6.93 # old scaling factor = 0.105
-    x2 <- list("new_width"=new_width,"new_height"=new_height)
-    return(x2)
-  }
-}
-
-#######################################################################
-# Define GSEA functions
-#######################################################################
-# ---------------------------------------------------------------------
-# Create pre-ranked gene list for GSEA function
-# ---------------------------------------------------------------------
-tk_create_prerank <- function(tibble, method = NULL, logFC_col = NULL, padj_col = NULL, sort = TRUE) {
-  # method must be one of: "pval_sign" or "lfc"
-  # Check input parameters
-  if (is.null(logFC_col)) {
-    print("You need to provide the column index for log fold change values")
-    stop()
-  }
-  if (is.null(padj_col)) {
-    print("You need to provide the column index for adjusted p-values")
-    stop()
-  }
-  # Create prerank table
-  if (method == "pval_sign") {
-    tibble <- add_column(tibble, "log2FoldChange_sign" = sign(tibble[[logFC_col]]))
-    tibble <- add_column(tibble, "minuslog10pval" = -log10(tibble[[padj_col]]))
-    # If any are Inf, set to very high value (e.g. 300)
-    tibble$minuslog10pval[which(tibble$minuslog10pval == "Inf")] <- 300
-    # Create the prerank_metric: -log10pval * fold change sign
-    tibble <- add_column(tibble, "prerank_metric" = (tibble$minuslog10pval * tibble$log2FoldChange_sign))
-    # Remove genes that have p values with "NA"
-    tibble <- tibble[!(is.na(tibble$minuslog10pval)), ]
-    if (sort == TRUE) {
-      tibble <- tibble[order(tibble$prerank_metric, decreasing = TRUE), ]
-    }
-    return(tibble)
-  } else if (method == "lfc") {
-    tibble <- tibble %>% 
-      add_column(prerank_metric = tibble[[logFC_col]]) %>%
-      drop_na(padj_col) %>%
-      filter(ENTREZID != "unknown")
-    if (sort == TRUE) {
-      tibble <- tibble %>% 
-        arrange(desc(tibble[[logFC_col]]))
-    }	
-    return(tibble)
-  } else {
-    print("You need to provide a method argument that is either pval_sign or lfc")
-    stop()
-  }
-}
-
-# ---------------------------------------------------------------------
-# GSEA dotplot - code hacked from Enrichplot (DOSE)
-# ---------------------------------------------------------------------
-ep_str_wrap <- function(string, width) {
-  x <- gregexpr(' ', string)
-  vapply(seq_along(x),
-         FUN = function(i) {
-           y <- x[[i]]
-           n <- nchar(string[i])
-           len <- (c(y,n) - c(0, y)) ## length + 1
-           idx <- len > width
-           j <- which(!idx)
-           if (length(j) && max(j) == length(len)) {
-             j <- j[-length(j)]
-           }
-           if (length(j)) {
-             idx[j] <- len[j] + len[j+1] > width
-           }
-           idx <- idx[-length(idx)] ## length - 1
-           start <- c(1, y[idx] + 1)
-           end <- c(y[idx] - 1, n)
-           words <- substring(string[i], start, end)
-           paste0(words, collapse="\n")
-         },
-         FUN.VALUE = character(1)
-  )
-}
-
-default_labeller <- function(n) {
-  function(str){
-    str <- gsub("_", " ", str)
-    ep_str_wrap(str, n)
-  }
-}
-
-GSEA_dotplot <- function(gsea_results_df,num_cat2){
-  label_format=30
-  label_func <- default_labeller(label_format)
-  if(is.function(label_format)){
-    label_func <- label_format}
-  gene_lists <- str_split(gsea_results_df$core_enrichment,"/")
-  num_core_enriched <- c()
-  for (i in 1:length(gene_lists)){
-    num_core_enriched <- c(num_core_enriched, length(gene_lists[[i]]))
-  }
-  gsea_results_df$num_core_enriched <- num_core_enriched
-  gsea_results_df$GeneRatio <- as.numeric(gsea_results_df$num_core_enriched/gsea_results_df$setSize)
-  gsea_results_df$sign <- "suppressed"
-  if ("TRUE" %in% (gsea_results_df$NES > 0)){
-    gsea_results_df[gsea_results_df$NES > 0,]$sign <- "activated"
-  }
-  gsea_results_df$Description <- as.character(gsea_results_df$ID)
-  print(gsea_results_df)
-  font.size=12
-  color="p.adjust"
-  colorBy <- "p.adjust"
-  idx <- order(gsea_results_df$GeneRatio, decreasing = T)
-  #idx <- order(gsea_results_df[gsea_results_df$GeneRatio], decreasing = F)
-  gsea_results_df$Description <- factor(gsea_results_df$Description,levels=rev(unique(gsea_results_df$Description[idx])))
-  gplot <- ggplot(gsea_results_df, aes_string(x="GeneRatio", y="Description", size="num_core_enriched", color=colorBy)) +
-    geom_point() + scale_color_continuous(low="red", high="blue", name = color,guide=guide_colorbar(reverse=TRUE)) +
-    scale_y_discrete(labels = label_func) + ylab(NULL) + theme_dose(font.size) + scale_size(range=c(3, 8))+ facet_wrap(~sign)
-  return(gplot)
-}
-
-
-# ---------------------------------------------------------------------
-# GSEA functions
-# ---------------------------------------------------------------------
-
-GSEA_TryCatch <- function(prl,mdb){ 
-  tryCatch({
-    # try this:
-    x <- clusterProfiler::GSEA(prl, TERM2GENE = mdb, minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5, seed=TRUE, pAdjustMethod = "BH")
-    return(x)
-  },
-  # if fails:
-  error=function(error_message){
-    message("And below is the error message from R:")
-    message(error_message)
-    return(NULL)
-  }
-  )
-}
-
-tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 0.05, database_types = levels(fmsigdb_long$database), num_cat) {
-  
-  prerank_gene_list <- sorted_prerank_df$prerank_metric
-  names(prerank_gene_list) <- as.character(sorted_prerank_df$ENTREZID)
-  
-  # DATABASES
-  # all:
-  # database_types <- levels(msigdb_long$database)
-  # OR MANUAL EDIT TO CHOOSE FOR YOUR FAVORITE DATABASES
-  # database_types <- levels(msigdb_long$database)[grepl("_all", levels(msigdb_long$database))]
-  # database_types <- c("c2_cgp", "c2_cp_reactome", "c2_cp_biocarta", "c2_cp_kegg", "h", "c6")
-  
-  
-  gsea_msigdb_df <- data.frame()
-  gsea_msigdb_list <- list()
-  for (dbt in seq_along(database_types)) {
-    # get only one database type at a time
-    # Print database name
-    print(database_types[dbt])
-    msigdb_long_curr <- filter(msigdb_long, database == database_types[dbt])
-    # Print the number of gene sets in database
-    print(length(levels(factor(msigdb_long_curr$ont))))
-    set.seed(123)
-    
-    ##gsea_msigdb_curr <- clusterProfiler::GSEA(prerank_gene_list, TERM2GENE = msigdb_long_curr, minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5, seed=TRUE, pAdjustMethod = "BH")
-    gsea_msigdb_curr <- GSEA_TryCatch(prerank_gene_list,msigdb_long_curr)
-    ##if (length(gsea_msigdb_curr$ID) > 0) {
-    if (is.null(gsea_msigdb_curr) == FALSE & length(gsea_msigdb_curr$ID) > 0){
-      gsea_msigdb_curr <- setReadable(gsea_msigdb_curr, OrgDb = orgdb, keyType = "ENTREZID")
-      gsea_msigdb_curr@result$gene_set_database <- database_types[dbt]
-      gsea_msigdb_curr@result$gene_set_description <- msigdb_long$description[match(gsea_msigdb_curr$ID, msigdb_long$ont)]
-      # Sometimes with only 1 signif geneset, the qvalues are logical with NA. This causes problems when plotting
-      if (!is.logical(gsea_msigdb_curr@result$qvalues)) {
-        gsea_msigdb_curr_signif_df <- gsea_msigdb_curr[gsea_msigdb_curr@result$qvalues <= qvalue_threshold, ]
-        gsea_msigdb_curr_signif_df <- gsea_msigdb_curr_signif_df[order(gsea_msigdb_curr_signif_df$qvalues, decreasing = FALSE), ]
-      } else {
-        # Else, filter on adjusted p values (which are similar)
-        gsea_msigdb_curr_signif_df <- gsea_msigdb_curr[gsea_msigdb_curr@result$p.adjust <= qvalue_threshold, ]
-        gsea_msigdb_curr_signif_df <- gsea_msigdb_curr_signif_df[order(gsea_msigdb_curr_signif_df$p.adjust, decreasing = FALSE), ]
-      }
-      # Combine results from curr df into full df
-      gsea_msigdb_df <- rbind(gsea_msigdb_df, gsea_msigdb_curr_signif_df)
-      # Combine results from curr database to all others
-      gsea_msigdb_list[[database_types[dbt]]] <- gsea_msigdb_curr
-      
-      
-      ##------------save dotplot of signif gsea results and image height and width info------------------##
-      if (dim(gsea_msigdb_curr_signif_df)[1] >= 1){
-        if (num_cat == Inf){
-          nt = length(gsea_msigdb_curr_signif_df$ID)
-          print(nt)
-        }else{if (length(gsea_msigdb_curr_signif_df$ID) >= num_cat){
-          nt = num_cat
-          gsea_msigdb_curr_signif_df <- gsea_msigdb_curr_signif_df[1:num_cat,]}
-          if (length(gsea_msigdb_curr_signif_df$ID) < num_cat) {
-            nt = length(gsea_msigdb_curr_signif_df$ID)}
-        }
-        lenchar <- max(str_length(as.character(gsea_msigdb_curr_signif_df$Description)))
-        new_w <- (0.196*(lenchar))+1.569
-        if(new_w < 10) {new_w <- 10}
-        new_h <- 0.24*(nt)+5.04
-        print(new_h)
-        print(new_w)
-        if (!dir.exists(paste0("clusterProfiler_results/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0("clusterProfiler_results/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
-        pdf(paste0("clusterProfiler_results/msigdb_gsea/Dotplot_GSEA_",database_types[dbt],".pdf"), width = new_w, height = new_h)
-        print(GSEA_dotplot(gsea_msigdb_curr_signif_df,nt))
-        Sys.sleep(10)
-        dev.off()
-        ##-------------------------------------------------------------------##
-      }
-      # Make individual plots for all signif gene sets
-      for (j in seq_along(gsea_msigdb_curr_signif_df$ID)) {
-        if (gsea_msigdb_curr_signif_df$NES[j] > 0) {
-          nes_direction <- "pos"
-        } else {
-          nes_direction <- "neg"
-        }
-        #if (!dir.exists(paste0("clusterProfiler_results/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0("clusterProfiler_results/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
-        pdf(paste0("clusterProfiler_results/msigdb_gsea/", database_types[dbt], "/", str_pad(j, 4, pad = "0"), "_", nes_direction, "_", gsea_msigdb_curr_signif_df$ID[j], ".pdf"))
-        print(gseaplot(gsea_msigdb_curr, gsea_msigdb_curr_signif_df$ID[j], title = paste0(gsea_msigdb_curr_signif_df$ID[j], "\n", "NES = ", round(gsea_msigdb_curr_signif_df$NES[j], 4), "\n", "qvalue = ", round(gsea_msigdb_curr_signif_df$qvalues[j], 4))))
-        dev.off()
-      }
-      
-      #pdf(paste0("clusterProfiler_results/msigdb_gsea/Dotplot_GSEA_",database_types[dbt],".pdf"), width = new_width, height = new_height)
-      #print(ggplot(gsea_msigdb_curr_signif_df, aes_string(x="GeneRatio", y="Description", size="num_core_enriched", color=colorBy)) +
-      #geom_point() + scale_color_continuous(low="red", high="blue", name = color,guide=guide_colorbar(reverse=TRUE)) +
-      #scale_y_discrete(labels = label_func) + ylab(NULL) + theme_dose(font.size) + scale_size(range=c(3, 8))+ facet_wrap(~sign))
-      #dev.off()
-      
-    }
-    
-  }
-  if (dim(gsea_msigdb_df)[1] > 0){
-  # Clean up and sort data frame, export to Excel file
-  gsea_msigdb_df <- gsea_msigdb_df[order(gsea_msigdb_df$qvalues, decreasing = FALSE), ]
-  gsea_msigdb_df$Description <- NULL
-  class(gsea_msigdb_df$gene_set_description) <- "hyperlink"
-  
-  prerank_excel <- as.data.frame(sorted_prerank_df)
-  #print(head(prerank_excel))
-  #print(table(prerank_excel$prerank_metric))
-  #class(prerank_excel$ncbi_gene_db) <- "hyperlink"
-  #class(prerank_excel$ensembl_gene_db) <- "hyperlink"
-  prerank_excel_short <- prerank_excel[, c("gene", "prerank_metric")]
-  
-  
-  excel_list <- list(gsea_msigdb_df, prerank_excel_short, prerank_excel)
-  names(excel_list) <- c("gsea_signif", "preranked_gene_order", "preranked_all_columns")
-  wb <- openxlsx::write.xlsx(excel_list, file = paste0("clusterProfiler_results/msigdb_gsea/msigdb_gsea.xlsx"))
-  setColWidths(wb, sheet = 1, cols = 1, widths = 60)
-  saveWorkbook(wb, paste0("clusterProfiler_results/msigdb_gsea/msigdb_gsea.xlsx"), overwrite = TRUE)
-  
-  # Create dir for text file output
-  if (!dir.exists("clusterProfiler_results/suppl_files")) {dir.create("clusterProfiler_results/suppl_files")}
-  write_tsv(gsea_msigdb_df, "clusterProfiler_results/suppl_files/gsea_msigdb.tsv")
-  write_tsv(prerank_excel_short, "clusterProfiler_results/suppl_files/prerank_less_cols.tsv")
-  write_tsv(prerank_excel, "clusterProfiler_results/suppl_files/prerank.tsv")
-  return(gsea_msigdb_list)
-  }
-}
 
 
 #######################################################################
 # Analysis
 #######################################################################
 
+source(paste0(module_dir,"/clusterprofiler_functions.R"))
 # ---------------------------------------------------------------------
 # Run GSEA
 # ---------------------------------------------------------------------
@@ -605,73 +322,71 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
 check_gsea <- gsea_ok(d1_gsea,species,col_indices)
 
 if (enable_GSEA == TRUE  & check_gsea == TRUE){
+	# Message
+	print("Running GSEA....")
 
-  # define column swap function
-swap <- function(DF, n, m)
-{
-  return (DF[ if (n==m) 1:length(DF) else c( (if (min(n,m)==1) c() else 1:(min(n,m)-1) ), (if (min(n,m)+1 == max(n,m)) (min(n,m)+1):(max(n,m)-1) else c( max(n,m), (min(n,m)+1):(max(n,m)-1), min(n,m))), (if (max(n,m)==length(DF)) c() else (max(n,m)+1):length(DF) ) ) ])
-}
+	# swap columns to ENTREZID
+	d1_gsea  <- swap(d1_gsea,1,dim(d1_gsea)[2])
+	t_d1 <- tibble(d1_gsea)
+	head(t_d1)
 
-# SAVED D1_MERGED AS D1_GSEA
-#d1 <- read.delim(DEfile,header = T, sep = '\t', as.is = T)
-#colnames(d1)[1] <- "gene"
-#d1_ids <- bitr(d1$gene, fromType = gt, toType=c('ENTREZID'), OrgDb=orgdb)
-#d1_merged <- merge(d1, d1_ids, by.x = "gene", by.y = gt)
-#names(d1_merged)[2] <- 'log2FC'
-#print("Number of DEGs: ",str(dim(d1_merged)[1]))
-
-# swap columns to ENTREZID
-d1_merged  <- swap(d1_gsea,1,dim(d1_gsea)[2])
-t_d1 <- tibble(d1_merged)
-head(t_d1)
-
-# retrieve all gene sets associated with the species
-msigdb <- msigdbr(species = species)
-# convert colons to underscores in gene set subcategory column
-colon_to_underscore <- gsub(":", "_", msigdb$gs_subcat)
-database <- tolower(paste0(msigdb$gs_cat, "_", colon_to_underscore))
-database <- sub("_$","",database) # MM modification -- this is needed; otherwise the "hallmark gene set" shows 0 genes when you run the cluster profiler wrapper function
-table(database)
-msigdb$database <- database
-# add links
-msigdb$description <- paste0("http://www.broadinstitute.org/gsea/msigdb/cards/", msigdb[[1]])
-# Create a data frame for clusterProfiler (for genes as Entrez Gene IDs).
-msigdb_long <- msigdb %>%
-dplyr::select(gs_name, entrez_gene, human_gene_symbol, database, description) %>%
-as.data.frame()
-# change column names
-colnames(msigdb_long) <- c("ont", "gene", "symbol", "database", "description")
-# write TSV file of msigdb
-# write_tsv(msigdb_long, paste0(out_dir, "/", prefix, "msigdb_long.tsv"))
-msigdb_long$database <- factor(msigdb_long$database)
+	# retrieve all gene sets associated with the species
+	msigdb <- msigdbr(species = species)
+	# convert colons to underscores in gene set subcategory column
+	colon_to_underscore <- gsub(":", "_", msigdb$gs_subcat)
+	database <- tolower(paste0(msigdb$gs_cat, "_", colon_to_underscore))
+	database <- sub("_$","",database) # MM modification -- this is needed; otherwise the "hallmark gene set" shows 0 genes when you run the cluster profiler wrapper function
+	table(database)
+	msigdb$database <- database
+	# add links
+	msigdb$description <- paste0("http://www.broadinstitute.org/gsea/msigdb/cards/", msigdb[[1]])
+	# Create a data frame for clusterProfiler (for genes as Entrez Gene IDs).
+	msigdb_long <- msigdb %>%
+		dplyr::select(gs_name, entrez_gene, human_gene_symbol, database, description) %>%
+		as.data.frame()
+	# change column names
+	colnames(msigdb_long) <- c("ont", "gene", "symbol", "database", "description")
+	# write TSV file of msigdb
+	# write_tsv(msigdb_long, paste0(out_dir, "/", prefix, "msigdb_long.tsv"))
+	msigdb_long$database <- factor(msigdb_long$database)
 
 
-if (NA %in% match(msigdbs_list,c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6", "c7", "c8", "h","all"))) {
-print("ERROR: MSigDB entry is not valid. Check the spelling of MSig databases.")
-quit(status=1)
-}
+	check_msigdb_list <- function(msigdbs_list){
+		mcheck <- TRUE
+		db_names <- c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6", "c7", "c8", "h","all")
+		for (i in 1:length(msigdbs_list)){
+			if (!msigdbs_list[i] %in% db_names){
+			mcheck <- FALSE
+			}
+		}
+		return(mcheck)
+	}
 
-if (msigdbs_list == "all"){
- msigdbs_list <- unique(msigdb_long$database)
+	if (check_msigdb_list(msigdbs_list) == FALSE){
+	print("ERROR: MSigDB entry is not valid. Check the spelling of Molecular Signatures databases. Check that there are no spaces between database names.")
+	quit(status=1)
+	}
 
-}
 
-if (input_gsea_sorting_method == "pval"){
-if (c("PValue","log2FC") %in% colnames(t_d1)){
-method="pval_sign"
-}else{
-method="lfc"
-}
-}else{
-method="lfc"
-}
+	if ("all" %in% msigdbs_list){
+		msigdbs_list <- unique(msigdb_long$database)
+	}
 
-parameters_towrite <- rbind(parameters_towrite,c("GSEA ranking method:",method))
-sorted_preranked_df <- tk_create_prerank(t_d1,method=method,logFC_col = which(colnames(t_d1) == "log2FC"),padj_col = which(colnames(t_d1) == "PValue"))
-print(msigdbs_list)
-# Run GSEA
-tk_enricher_gsea(sorted_preranked_df, msigdb_long, qvalue_threshold = 0.05, database_types = msigdbs_list, num_cat=num_terms)
+	if (input_gsea_sorting_method == "pval"){
+		if ("PValue" %in% colnames(t_d1) & "log2FC" %in% colnames(t_d1)){
+		method="pval_sign"
+		}else{
+		method="lfc"
+		}
+		}else{
+		method="lfc"
+	}
 
+	parameters_towrite <- rbind(parameters_towrite,c("GSEA ranking method:",method))
+	sorted_preranked_df <- tk_create_prerank(t_d1,method=method,logFC_col = which(colnames(t_d1) == "log2FC"),padj_col = which(colnames(t_d1) == "PValue"))
+	print(msigdbs_list)
+	# Run GSEA
+	tk_enricher_gsea(sorted_preranked_df, msigdb_long, qvalue_threshold = 0.05, database_types = msigdbs_list, num_cat=num_terms,project_dir=project_dir,nperm=nPerm)
 }
 
 
@@ -679,16 +394,39 @@ tk_enricher_gsea(sorted_preranked_df, msigdb_long, qvalue_threshold = 0.05, data
 # Run KEGG
 # ---------------------------------------------------------------------
 
+# OLD
+#fcs = d1_merged$log2FC
+#names(fcs) <- d1_merged$ENTREZID
 
-fcs = d1_merged$log2FC
+# Subset the DEG table to genes with absolute value log2 fold change > threshold
+d1_merged_sub <- d1_merged[abs(d1_merged$log2FC)>= fold_change,]
+fcs <- d1_merged_sub$log2FC
 # Add the ENTREZ gene IDs onto the fold changes
-names(fcs) <- d1_merged$ENTREZID
+names(fcs) <- d1_merged_sub$ENTREZID
+
+# Set universe from all tested genes
+universe <- d1_merged$ENTREZID
+
+print("After applying log2FC threshold, we have these many genes:")
+print(length(fcs))
+#print(fcs)
+
+
 # Reorder the genes from largest FC to smallest FC
-geneList <- sort(fcs,decreasing = T)
+#geneList <- sort(fcs,decreasing = T)
+geneList <- sort(abs(fcs),decreasing = T)
 # Number of DE genes with FDR  < 0.05:
 length(geneList)
-# Take DE genes with > 1 fold change
-genes <-  names(geneList)[abs(geneList) > fold_change]
+print(geneList)
+# Take DE genes with > X log2 fold change
+# genes <-  names(geneList)[abs(geneList) > fold_change]
+
+# Sort the genes by absolute fold change
+#genes <-  geneList[abs(geneList) > fold_change]
+#print(genes)
+#genes <- genes[sort(abs(genes),decreasing=T)]
+genes <- names(geneList)
+
 # determine the number of DEGs used for ontology analyses
 if (length(genes) <= num_genes){ 
 parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used for the Ontology analyses given the FDR, fold change, and topX gene parameter settings:",length(genes)))
@@ -697,9 +435,16 @@ parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used 
 }
 # Perform GO, KEGG, and Reactome on top X genes
 genes <- genes[1:num_genes]
-
+genes <- na.omit(genes)
+print(genes)
+print(paste0("After applying clusterProfiler FDR, log2FC, and topX gene filters ,",length(genes)," genes will be used for GO, KEGG, and Reactome database ORA."))
 write.table(parameters_towrite,paste0(out_dir,"/Parameter_settings.txt"),sep="\t",quote=FALSE,row.names=FALSE)
 
+if (length(genes) < 30){
+	print("There are less than 30 genes after applying clusterProfiler filters. Will not perform Over-representation Analysis. Please re-evaluate your clusterProfiler FDR and log2FC cutoffs. The default log2FC of 1 may be too stringent for your data set.")
+	break
+ }else{
+print("Running Over-Representation Analysis...")
 if (kegg_sp != ''){
     if (kegg_sp == "dme"){
       kegg_enrich <- enrichKEGG(gene = genes, # filtered DE gene list
@@ -711,21 +456,33 @@ if (kegg_sp != ''){
                                 qvalueCutoff = 0.2,
                                 keyType = "ncbi-geneid")
     }else{
+    print("Running KEGG Over-Representation Analysis...")
+    if (length(universe) > 5000){
+    kegg_enrich <- enrichKEGG(gene = genes, # filtered DE gene list
+                 universe = universe,
+		 organism     = kegg_sp,
+                 pvalueCutoff = pv_ont,
+                 pAdjustMethod = "BH", # Benjamini-Hochberg correction of p-value (false discovery rate)
+                 minGSSize = 10, # min number of genes annotated by ontology in gene set
+                 maxGSSize = 500, # max number of genes annotated by ontology in gene set
+		 qvalueCutoff = 0.2)
+    }else{
     kegg_enrich <- enrichKEGG(gene = genes, # filtered DE gene list
                  organism     = kegg_sp,
                  pvalueCutoff = pv_ont,
                  pAdjustMethod = "BH", # Benjamini-Hochberg correction of p-value (false discovery rate)
                  minGSSize = 10, # min number of genes annotated by ontology in gene set
                  maxGSSize = 500, # max number of genes annotated by ontology in gene set
-		             qvalueCutoff = 0.2)
+                 qvalueCutoff = 0.2)
     }
+}
 print("Number of Enriched KEGG terms:")
 print(dim(kegg_enrich)[1])
 
 if (is.null(kegg_enrich) == FALSE){
   if (dim(kegg_enrich)[1] >= 1){
  write.table(kegg_enrich,paste0(out_dir,"/Table_KEGG_enrichment_results.txt"),sep="\t",quote=FALSE)
-
+ saveRDS(kegg_enrich,paste0(out_dir,"/KEGG_enrichment_results.rds"))
  if (num_terms == Inf){
  nt = dim(kegg_enrich)[1]
  lab="allterms"
@@ -742,20 +499,22 @@ if (is.null(kegg_enrich) == FALSE){
  }
  if (enable_KEGG_pathview == TRUE){
  	##----- write out KEGG pathview results----------#
- 	print("Running KEGG pathview")
- 	setwd(kegg_path_dir)
+ 	print("Running KEGG pathview...")
+	workdir <- getwd() 
+	setwd(kegg_path_dir)
  	for (kegg_term in kegg_enrich@result$ID[1:nt]){
  	kegg_desc <- gsub(" ","_",kegg_enrich@result[kegg_enrich@result$ID==kegg_term,]$Description)
  	kegg_desc <- gsub("/","-",kegg_desc)
-	pathview(gene.data  = geneList,
+	try(pathview(gene.data  = geneList,
 	pathway.id = kegg_term,
  	species    = kegg_sp,
  	out.suffix = kegg_desc,
- 	limit      = list(gene=max(abs(geneList)), cpd=1))
+ 	limit      = list(gene=max(abs(geneList)), cpd=1)))
+ 	}
+ 	setwd(workdir)
+ 	##--------- end of write out pathview results-----#
  }
- setwd(curr_dir)
- ##--------- end of write out pathview results-----#
- }
+ print("Making KEGG ORA Dotplot...")
  dp <- dotplot(kegg_enrich, showCategory=nt,label_format = 300) + ggtitle("KEGG Term over representation")
  print(nt)
  x <- adjust_image_dims_dp2(dp,nt)
@@ -764,15 +523,9 @@ if (is.null(kegg_enrich) == FALSE){
  dev.off()
  x2 <- adjust_image_dims_emap(kegg_enrich)
  if (dim(kegg_enrich)[1] >= 2){
- pdf(paste0(out_dir,"/emapplot_KEGG_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- kegg_enrich <- pairwise_termsim(kegg_enrich)
- print(emapplot(kegg_enrich,showCategory=nt))
- dev.off()
+ print("Making KEGG ORA Emapplot...")
+ try(make_emapplot_cnetplot_kegg(enrichment_object=kegg_enrich,out_dir=out_dir,x2=x2,lab=lab,nt=nt,geneList=geneList,orgdb=orgdb))
  }
- kegg_enrich <- setReadable(kegg_enrich,orgdb,'ENTREZID')
- pdf(paste0(out_dir,"/cnetplot_KEGG_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- print(cnetplot(kegg_enrich,foldChange = geneList,showCategory=nt))
- dev.off()
 }
 }
 }
@@ -783,22 +536,33 @@ if (is.null(kegg_enrich) == FALSE){
 
 
 if (orgdb != ''){
+print("Running GO Over-Representation Analysis...")
+if (length(universe) > 5000){
 ego <- enrichGO(gene          = genes,
-                #universe      = names(geneList),
+                universe      = universe,
                 OrgDb         = orgdb,
                 ont           = go_ont,
                 pAdjustMethod = "BH",
                 pvalueCutoff  = pv_ont,
-                qvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.2,
         	readable      = TRUE)
-
+}else{
+ego <- enrichGO(gene          = genes,
+                OrgDb         = orgdb,
+                ont           = go_ont,
+                pAdjustMethod = "BH",
+                pvalueCutoff  = pv_ont,
+                qvalueCutoff  = 0.2,
+                readable      = TRUE)
+}
 print("Number of Enriched GO terms:")
 print(dim(ego)[1])
 
 if (is.null(ego) == FALSE){
 if (dim(ego)[1] >= 1){
  write.table(ego,paste0(out_dir,"/Table_GO_enrichment_results.txt"),sep="\t",quote=FALSE)
- if (num_terms == Inf){
+ saveRDS(ego,paste0(out_dir,"/GO_enrichment_results.rds"))
+if (num_terms == Inf){
  nt = dim(ego)[1]
  lab="allterms"
  }
@@ -814,27 +578,18 @@ if (dim(ego)[1] >= 1){
  }
  print(nt)
  print(lab)
+ print("Making GO ORA Dotplot...")
  dp <- dotplot(ego, showCategory=nt,label_format = 300) + ggtitle(paste0("GO Term over representation - ",length(genes)))
  x <- adjust_image_dims_dp2(dp,nt)
  pdf(paste0(out_dir,"/Dotplot_GO_over_representation_",go_ont,"_",lab,".pdf"), width = x$new_width, height = x$new_height)
  print(dp)
  dev.off()
- # make emapplot
+ # make emapplot,cnetplot,goplot
  x2 <- adjust_image_dims_emap(ego)
  if (dim(ego)[1] >= 2){
- pdf(paste0(out_dir,"/emapplot_GO_",go_ont,"_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- ego <- pairwise_termsim(ego)
- print(emapplot(ego,showCategory=nt))
- dev.off()
+ print("Making GO ORA Emapplot...")
+ GO_emapplot_TryCatch(enrichment_object=ego,out_dir=out_dir,go_ont=go_ont,x2=x2,lab=lab,nt=nt)
  }
- # make cnetplot
- pdf(paste0(out_dir,"/cnetplot_GO_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- print(cnetplot(ego,foldChange = geneList,showCategory=nt))
- dev.off()
- # make goplot
- pdf(paste0(out_dir,"/goplot_GO_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- print(goplot(ego,showCategory = nt))
- dev.off()
 }
 }
 }
@@ -846,6 +601,18 @@ if (dim(ego)[1] >= 1){
 # ---------------------------------------------------------------------
 
 if (reactome_org != ''){
+print("Running Reactome Over-Representation Analysis...")
+if (length(universe) > 5000){
+reactome_enrich <- enrichPathway(gene = genes, # filtered DE gene list
+                 organism     = reactome_org,
+		 universe = universe,
+		 pvalueCutoff = pv_ont,
+                 pAdjustMethod = "BH", # Benjamini-Hochberg correction of p-value (false discovery rate)
+                 minGSSize = 5, # min number of genes annotated by ontology in gene set
+                 maxGSSize = 500, # max number of genes annotated by ontology in gene set
+                 qvalueCutoff = 0.2,
+		 readable = TRUE)
+}else{
 reactome_enrich <- enrichPathway(gene = genes, # filtered DE gene list
                  organism     = reactome_org,
                  pvalueCutoff = pv_ont,
@@ -853,14 +620,16 @@ reactome_enrich <- enrichPathway(gene = genes, # filtered DE gene list
                  minGSSize = 5, # min number of genes annotated by ontology in gene set
                  maxGSSize = 500, # max number of genes annotated by ontology in gene set
                  qvalueCutoff = 0.2,
-		 readable = TRUE)
+                 readable = TRUE)
+}
 
 print("Number of Enriched Reactome terms:")
 print(dim(reactome_enrich)[1])
 
 if (is.null(reactome_enrich) == FALSE){
-  if (dim(reactome_enrich)[1] >= 1){
+ if (dim(reactome_enrich)[1] >= 1){
  write.table(reactome_enrich,paste0(out_dir,"/Table_Reactome_enrichment_results.txt"),sep="\t",quote=FALSE)
+ saveRDS(reactome_enrich,paste0(out_dir,"/Reactome_enrichment_results.rds"))
  if (num_terms == Inf){
  nt = dim(reactome_enrich)[1]
  lab="allterms"
@@ -875,21 +644,17 @@ if (is.null(reactome_enrich) == FALSE){
  print(dp)
  dev.off()
  x2 <- adjust_image_dims_emap(reactome_enrich)
- if (dim(reactome_enrich)[1] >= 2){
- pdf(paste0(out_dir,"/emapplot_Reactome_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- reactome_enrich <- pairwise_termsim(reactome_enrich)
- print(emapplot(reactome_enrich,showCategory=nt))
- dev.off()
+ if (dim(reactome_enrich)[1] >= 3){
+ try(make_emapplot_cnetplot_reactome(enrichment_object=reactome_enrich,out_dir=out_dir,x2=x2,lab=lab,nt=nt))
  }
- #reactome_enrich <- setReadable(reactome_enrich,orgdb,'ENTREZID')
- pdf(paste0(out_dir,"/cnetplot_Reactome_",lab,".pdf"),height = x2$new_height,width = x2$new_width)
- print(cnetplot(reactome_enrich,foldChange = geneList,showCategory=nt))
- dev.off()
 }
 }
 }
 
+} # end of ifelse statement of < 30 genes
+
 writeLines(capture.output(sessionInfo()), paste0(out_dir,"/sessionInfo.txt"))
+
 
 
 
