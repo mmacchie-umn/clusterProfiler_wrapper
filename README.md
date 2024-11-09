@@ -21,9 +21,8 @@ The wrapper script requires three arguments to perform over-representation analy
 
 The script will:
 1) subset the DEG table by FDR (default = 0.05, can change this value with "-p" option) and fold change (default = 1X, can change with "-c" option)
-2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with "-g" option).
-3) the top 200 genes will be used for ORA with GO, KEGG, and REACTOME pathways. Default significance cutoffs for enriched pathway terms is Pvalue < 0.05 (can be modified with "-a" option)
-4) plots ALL significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with "-a").
+2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with "-g" option) for ORA against pathways from the GO, KEGG, and REACTOME databases. Default significance cutoffs for enriched pathway terms is P-value < 0.05 (can be modified with "-a" option)
+3) plot all significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with "-a").
 
 --- 
 
