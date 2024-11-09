@@ -109,8 +109,8 @@ Options:
 
 v2.1
 - Fixed KEGG database issues (updated clusterprofiler R package)
-- R package library location had changed; new packages installs for R/4.3.0 (R packages installed for Rocky Linux 8)
-- Gene ranking in GSEA is ranking by P-value instead of FDR when --prerankMethod=pval.
+- R package library location changed; new R packages were installed for R/4.3.0 (on Rocky Linux 8)
+- Gene ranking in GSEA ranks by P-value instead of FDR when --prerankMethod=pval.
 - Generates .RDS objects for all ORA results; these can be loaded into R and processed further with clusterProfiler R package
 
 v2.0
