@@ -8,7 +8,7 @@ For ORA, it will take the top 200 genes [can be adjusted] in the differential ge
 For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the '--msigdbs' option in the Options section.
 
 ### Required arguments:
-The wrapper script requires three arguments to perform over-representation analysis (ORA) againt pathways in three databases:
+The wrapper script requires three arguments to perform over-representation analysis (ORA) against pathways in three databases:
 1) A differential gene expression results table produced by software such as edgeR or DESeq2. It requires a gene column, a log2 fold change column, a p-value column, and a FDR column. Tab-delimited text file.
 2) The name (genus_species) of the organism the genes in the DEG table correspond to. The organism name must be in the format "Genus_species", where Genus is capitalized and species is lowercase (e.g. Homo_sapiens, Mus_musculus, Canis_lupus_familiaris).
 3) Gene ID format. If in gene symbol format, use "SYMBOL". If ENSEMBL, use "ENSEMBL". If Entrez, used "ENTREZID".
