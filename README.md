@@ -105,7 +105,7 @@ Options:
 
 
 --- 
-# clusterProfiler_wrapper version updates
+## clusterProfiler_wrapper version updates
 
 v2.1
 - Fixed KEGG database issues (updated clusterprofiler R package)
