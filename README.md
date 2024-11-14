@@ -5,13 +5,13 @@ The clusterprofiler wrapper is an R script that can be run from the commandline 
 
 For ORA, it will take the top 200 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
 
-For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the '--msigdbs' option in the Options section.
+For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
 
 ### Required arguments:
 The wrapper script requires three arguments to perform over-representation analysis (ORA) against pathways in three databases:
 1) A differential gene expression results table produced by software such as edgeR or DESeq2. It requires a gene column, a log2 fold change column, a p-value column, and a FDR column. Tab-delimited text file.
-2) The name (genus_species) of the organism the genes in the DEG table correspond to. The organism name must be in the format "Genus_species", where Genus is capitalized and species is lowercase (e.g. Homo_sapiens, Mus_musculus, Canis_lupus_familiaris).
-3) Gene ID format. If in gene symbol format, use "SYMBOL". If ENSEMBL, use "ENSEMBL". If Entrez, used "ENTREZID".
+2) The name (genus_species) of the organism the genes in the DEG table correspond to. The organism name must be in the format "Genus_species", where Genus is capitalized and species is lowercase (e.g. `Homo_sapiens`, `Mus_musculus`, `Canis_lupus_familiaris`).
+3) Gene ID format. If the Gene ID is in gene symbol format, use `SYMBOL`. If ENSEMBL, use `ENSEMBL`. If Entrez, used `ENTREZID`.
 
 **Usage:**  
 
@@ -19,15 +19,23 @@ The wrapper script requires three arguments to perform over-representation analy
 
 **Important default settings for ORA:**   
 
-The script will:
-1) subset the DEG table by FDR (default = 0.05, can change this value with "-p" option) and fold change (default = 1X, can change with "-c" option)
-2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with "-g" option) for ORA against pathways from the GO, KEGG, and REACTOME databases. Default significance cutoffs for enriched pathway terms is P-value < 0.05 (can be modified with "-a" option)
-3) plot all significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with "-a").
+The script will:   
+1) subset the DEG table by FDR (default = 0.05, can change this value with `-p` option) and fold change (default = 1X, can change with `-c` option).  
+2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with `-g` option) for ORA against pathways from the GO, KEGG, and REACTOME databases. Default significance cutoffs for enriched pathway terms is P-value < 0.05 (can be modified with `-a` option).   
+3) plot all significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with `-a`).   
 
+**ORA Output Files:**
+1) **Parameter_settings.txt** : A text file with all of the parameters used for ORA and GSEA analysis. The settings in this file can be reported in papers.
+2) **Table_[database]_enrichment_results.txt** : Tab-delimited text files of pathways enriched in each database. Note: if a database enrichment table is missing, there were no enriched pathways from that database.
+3) **emapplot_[database]_allterms.pdf** : A network plot showing all of the significant pathway terms from a database and their relationships to each other. Nodes are pathways, and edges represent the number of genes shared between them. File is in PDF format.
+4) **Dotplot_[database]_over_representation_allterms.pdf** :  A dotplot showing all significant pathway terms from a database, the fraction of genes annotated with a particular term in our query gene set, and the significance level.
+5) **cnetplot_[database]_over_representation_allterms.pdf**: A network plot showing the significant pathway terms from a database and the genes that are associated with each pathway. It shows the fold change direction of the gene in the comparison.
+6) **goplot_GO_allterms.pdf**: A plot of gene ontology pathway terms organized in a hierarchical fashion to show relationships between terms. It shows both significant and non-significant terms.
+7) **[database]_enrichment_results.rds**: A R object in "RDS" format that can be loaded into R with the `readRDS` command. This R object can be filtered further and used with the `dotplot()`, `emapplot()`, `cnetplot` functions from the clusterprofiler R package.
 --- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-To perform GSEA, include "--GSEA TRUE" in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include "--prerankMethod pval" in the command.
+To perform GSEA, include `--GSEA TRUE` in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
 	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE
@@ -39,19 +47,26 @@ To perform GSEA, include "--GSEA TRUE" in the command. By default, all genes in 
 	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval --msigdb h,c2_cp_kegg,c5_go_bp,c2_cp_reactome
 
 
-**Important default settings for GSEA:**   
-The GSEA code will:
-1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the "--prerankMethod pval" option.  
-2) Perform GSEA against the Hallmark collection by default. Can change the database with the "--msigdb" option. To run it against all databases, use "--msigdb all" or provide a comma-separated list of databases (e.g. --msigdb .
+**Important default settings for GSEA:**    
+The GSEA code will:   
+1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the `--prerankMethod pval` option.  
+2) Perform GSEA against the Hallmark collection by default. Can change the database with the `--msigdb` option. To run it against all databases, use `--msigdb all` or provide a comma-separated list of databases (e.g. `--msigdb h,c2_cp_kegg,c5_go_bp,c2_cp_reactome`) .
 3) Generates GSEAplots, doplots, and GSEA tables of the results.
 
 
 Note: This may not work well for organisms that are not human and mouse.
 
+**GSEA Output:**    
+
+GSEA will generate an output folder called `msigdb_gsea`. Contained within this folder are folders corresponding to each msigdb collection/database. These folders contain GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and then running sum statistic along the ranked list.
+1) **Dotplot_GSEA_[collection/database].pdf** : A dotplot showing the enriched pathways from a collection/database, split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
+2) **msigdb_gsea.xlsx**: An excel file containing all of the enrichment results for each database.
+
+
 --- 
 
 ### KEGG Pathview:
-To make KEGG pathview plots from the KEGG ORA results, add "--keggpathview TRUE" to the command.
+To make KEGG pathview plots from the KEGG ORA results, add `--keggpathview TRUE` to the command.
 
 #### Example command to run ORA + KEGG pathview
 	run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
@@ -65,40 +80,40 @@ Usage: run_clusterProfiler.R [options] <DEG_file.txt> <species_name> <GeneID_for
 Options:
 
 	-d CHARACTER, --dir=CHARACTER
-		project directory
+		project directory. This will be created to output the clusterProfiler results.
 
 	-n CHARACTER, --num_top_terms=CHARACTER
-		Report top N ontology terms [default=all] in visualizations. [ORA]
+		Report top N ontology terms [default=all] in visualizations. [ORA option]
 
 	-g CHARACTER, --numDEGs=CHARACTER
-		Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default. [ORA]
+		Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default. [ORA option]
 
 	-p CHARACTER, --FDRGenes=CHARACTER
-		FDR cutoff used for classifying differentially expressed genes. [ORA]
+		FDR cutoff used for classifying differentially expressed genes. [ORA option]
 
 	-a CHARACTER, --pvalueOnt=CHARACTER
-		p-value cutoff used for ontology term enrichment test. Default = 0.05 [ORA]
+		p-value cutoff used for ontology term enrichment test. Default = 0.05 [ORA option]
 
 	-c CHARACTER, --foldchange=CHARACTER
-		absolute log2(fold change) cutoff for differentially expressed genes. Default is log2FC = 1. [ORA]
+		absolute log2(fold change) cutoff for differentially expressed genes. Default is log2FC = 1. [ORA option]
 
 	-b CHARACTER, --gene_ontology=CHARACTER
-		Biological process (BP), Cellular Component (CC), Molecular function (MF), or all ontologies (ALL). Default is BP. [ORA]
+		Biological process (BP), Cellular Component (CC), Molecular function (MF), or all ontologies (ALL). Default is BP. [ORA option]
 
 	--keggpathview=KEGGPATHVIEW
-		Enable KEGG pathview plots for KEGG terms (TRUE/FALSE). [ORA]
+		Enable KEGG pathview plots for KEGG terms (TRUE/FALSE). [ORA option]
 
 	--gsea=GSEA
-		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA]
+		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA option]
 
 	--msigdbs=MSIGDBS
-		Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp [GSEA]
+		Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp [GSEA option]
 
 	--prerankMethod=PRERANKMETHOD
-		Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA]
+		Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA option]
 
 	--numPermutations=CHARACTER
-		Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA]
+		Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA option]
 
 	-h, --help
 		Show this help message and exit
