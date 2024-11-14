@@ -58,7 +58,7 @@ Note: This may not work well for organisms that are not human and mouse.
 
 **GSEA Output:**    
 
-GSEA will generate an output folder called `msigdb_gsea`. Contained within this folder are folders corresponding to each msigdb collection/database. These folders contain GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and then running sum statistic along the ranked list.
+GSEA will generate an output folder called `msigdb_gsea`. Contained within the `msigdb_gsea` folder are folders corresponding to each msigdb collection/database that was tested against. These folders contain GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and the running sum statistic along the ranked list.
 1) **Dotplot_GSEA_[collection/database].pdf** : A dotplot showing the enriched pathways from a collection/database, split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
 2) **msigdb_gsea.xlsx**: An excel file containing all of the enrichment results for each database.
 
