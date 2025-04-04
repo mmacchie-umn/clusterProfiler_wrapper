@@ -73,7 +73,7 @@ GSEA will generate an output folder called `msigdb_gsea`. Contained within the `
 To make KEGG pathview plots from the KEGG ORA results, add `--keggpathview TRUE` to the command.
 
 #### Example command to run ORA + KEGG pathview
-	run_clusterProfiler.R -f Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt -s Drosophila_melanogaster -i SYMBOL --keggpathview TRUE
+	run_clusterProfiler.R Test_Data/Drosophila_melanogaster_edgeR_DEG_table.txt Drosophila_melanogaster SYMBOL --keggpathview TRUE
 
 --- 
 
