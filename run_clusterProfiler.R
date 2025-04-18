@@ -353,7 +353,7 @@ if (enable_GSEA == TRUE  & check_gsea == TRUE){
 
 	check_msigdb_list <- function(msigdbs_list){
 		mcheck <- TRUE
-		db_names <- c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6", "c7", "c8", "h","all")
+		db_names <- c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6","c7_immunesigdb", "c7_vax", "c8", "h","all")
 		for (i in 1:length(msigdbs_list)){
 			if (!msigdbs_list[i] %in% db_names){
 			mcheck <- FALSE
