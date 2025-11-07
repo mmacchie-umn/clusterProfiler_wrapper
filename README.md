@@ -54,7 +54,7 @@ To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in 
 **Important default settings for GSEA:**    
 The GSEA code will:   
 1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the `--prerankMethod pval` option.  
-2) Perform GSEA against the Hallmark collection by default. Can change the database with the `--msigdb` option. To run it against all databases, use `--msigdb all` or provide a comma-separated list of databases (e.g. `--msigdb h,c2_cp_kegg,c5_go_bp,c2_cp_reactome`) .
+2) Perform GSEA against the Hallmark collection by default. Can change the database with the `--msigdbs` option. To run it against all databases, use `--msigdbs all` or provide a comma-separated list of databases (e.g. `--msigdbs h,c2_cp_kegg,c5_go_bp,c2_cp_reactome`) .
 3) Generates GSEAplots, doplots, and GSEA tables of the results.
 
 
