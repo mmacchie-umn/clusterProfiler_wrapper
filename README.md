@@ -39,16 +39,16 @@ The script will:
 --- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-To perform GSEA, include `--GSEA TRUE` in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
+To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
-	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE
 
 #### Example command to run GSEA (ranking genes by -log(Pval)*FC direction):
-	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod pval
 
 #### Example command to run GSEA (ranking genes by -log(Pval)*FC direction) against pathways in the HALLMARK, KEGG, GO, REACTOME databases:
-	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --GSEA TRUE --prerankMethod pval --msigdb h,c2_cp_kegg,c5_go_bp,c2_cp_reactome
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod pval --msigdbs h,c2_cp_kegg,c5_go_bp,c2_cp_reactome
 
 
 **Important default settings for GSEA:**    
