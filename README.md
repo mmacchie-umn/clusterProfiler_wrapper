@@ -126,6 +126,8 @@ Options:
 --- 
 ## clusterProfiler_wrapper version updates
 
+![](clusterprofiler_figure2.png)
+
 v2.2
 - New Feature: Custom gene sets can be provided for GSEA
 - Default Parameter Change: Default for top genes for ORA has changed from 200 to 500.
