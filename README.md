@@ -107,7 +107,8 @@ Options:
 	--keggpathview=KEGGPATHVIEW
 		Enable KEGG pathview plots for KEGG terms (TRUE/FALSE). [ORA option]
 
-GSEA-specific options
+	** GSEA-specific options **
+ 
 	--gsea=GSEA
 		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA 		option]
 
