@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# clusterProfiler Wrapper version 2.0.1
+# clusterProfiler Wrapper version 2.2
 
 # Updates to clusterProfiler wrapper:
 # v1.3
@@ -40,7 +40,14 @@
 # Writes out RDS objects for the KEGG, GO, and Reactome ORAs
 # Added a try() statement around the kegg pathview function (https://support.bioconductor.org/p/9154314/)
 
-.libPaths(c("/panfs/jay/groups/0/riss/public/clusterProfilerWrapper2.1_rocky8/R/x86_64-pc-linux-gnu-library/4.3",.libPaths()))
+
+# v2.2 October 28,2025 
+# Modified the R .libPath to new location (/common/software/)
+# GSEA prerank changes: ranking by p-value ranks genes first by -log10(Pvalue), but if there are ties in rank, will then sort genes by log2FC magnitude.
+# 
+
+#.libPaths(c("/panfs/jay/groups/0/riss/public/clusterProfilerWrapper2.1_rocky8/R/x86_64-pc-linux-gnu-library/4.3",.libPaths()))
+.libPaths(c("/common/software/install/migrated/clusterprofiler_wrapper/R/x86_64-pc-linux-gnu-library/4.3/",.libPaths()))
 
 #######################################################################
 # Parse options
@@ -76,8 +83,8 @@ option_list = list(
 			help="Report top N ontology terms",metavar="character"),
 	make_option(c("-g","--numDEGs"),
 			type="numeric",
-			default="200",
-			help="Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default.",metavar="character"),
+			default="500",
+			help="Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 500 genes are kept by default.",metavar="character"),
 	make_option(c("-p","--FDRGenes"),
 			type="numeric",
 			default="0.05",
@@ -95,9 +102,11 @@ option_list = list(
 			default="BP",
 			help="Biological process (BP), Cellular Component (CC), Molecular function (MF), or all ontologies (ALL)",metavar="character"),
 	make_option("--keggpathview",
+		    	type = "logical",
 			default=FALSE,
 			help="Enable KEGG pathview plots for KEGG terms (TRUE/FALSE)"),
 	make_option("--gsea",
+		    	type = "logical",
 			default=FALSE,
 			help="Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigDBs option for other available databases."),
 	make_option("--msigdbs",
@@ -106,12 +115,16 @@ option_list = list(
 			help="Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp"),
 	make_option("--prerankMethod",
 			type="character",
-			default="lfc",
-			help="Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run."),
+			default="pval",
+			help="Method of ranking gene list for GSEA. 'pval' will sort by -log10(pval) * (direction of fold change), and 'lfc' will sort by log2(fold change). Note: if P-value column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run."),
 	make_option("--numPermutations",
 			type="numeric",
 			default="10000",
-			help="Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000.",metavar="character")
+			help="Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000.",metavar="character"),
+	make_option("--customGSEAgeneSet",
+		    	type="character",
+			metavar="character",
+			help="A 2-column tab-delimited file containing a custom gene set to include alongside the gene sets specified by the --msigsdb option. column 1 should contain the name of the custom gene set. The header of this column should be 'database'. column 2 should contain the genes (in gene SYMBOL format) that are within the custom gene set. The header of column 2 should be set to 'gene'") 
 )
 
 
@@ -165,6 +178,9 @@ fold_change <-opt$options$foldchange
 num_genes <- opt$options$numDEGs
 # Gene Ontology branch - BP, CC, MF or ALL (default = BP)
 go_ont <- opt$options$gene_ontology
+# Custom GSEA gene set
+CUSTOM_GS <- opt$options$customGSEAgeneSet
+
 
 # Enable KEGG Pathview
 enable_KEGG_pathview <- opt$options$keggpathview
@@ -197,7 +213,7 @@ print("Ontology term p-value cutoff (default = 0.05)")
 pv_ont
 print("User-specified DE gene log2 fold change cutoff (default = 1X)")
 fold_change
-print("Number of DEGs to use for ontology analysis (default = top 200 genes)")
+print("Number of DEGs to use for ontology analysis (default = top 500 genes)")
 num_genes
 print("Gene Ontology branch - BP, CC, MF or ALL (default = BP)")
 go_ont
@@ -217,7 +233,7 @@ parameters_towrite <- rbind(parameters_towrite,c("DEG file:",DEfile))
 parameters_towrite <- rbind(parameters_towrite,c("Species:",species))
 parameters_towrite <- rbind(parameters_towrite,c("User-specified DE gene p-value cutoff (default = 0.05):",pv))
 parameters_towrite <- rbind(parameters_towrite,c("User-specified DE gene log2 fold change cutoff (default = 1X):",fold_change))
-parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs to use for ontology analysis after applying FDR and log2FC cutoffs (default = top 200 genes):",num_genes))
+parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs to use for ontology analysis after applying FDR and log2FC cutoffs (default = top 500 genes):",num_genes))
 parameters_towrite <- rbind(parameters_towrite,c("Gene ID type (SYMBOL, ENSEMBL, ENTREZ, etc) in DEG file:",gt))
 parameters_towrite <- rbind(parameters_towrite,c("Number of Ontology terms to report:",num_terms))
 parameters_towrite <- rbind(parameters_towrite,c("Gene Ontology branch to use. Either BP, CC, MF or ALL (default = BP):",go_ont))
@@ -338,14 +354,14 @@ if (enable_GSEA == TRUE  & check_gsea == TRUE){
 	database <- sub("_$","",database) # MM modification -- this is needed; otherwise the "hallmark gene set" shows 0 genes when you run the cluster profiler wrapper function
 	table(database)
 	msigdb$database <- database
-	# add links
-	msigdb$description <- paste0("http://www.broadinstitute.org/gsea/msigdb/cards/", msigdb[[1]])
+	# add links - this doesn't work anymore so we are removing it
+	# msigdb$description <- paste0("http://www.broadinstitute.org/gsea/msigdb/cards/", msigdb[[1]])
 	# Create a data frame for clusterProfiler (for genes as Entrez Gene IDs).
 	msigdb_long <- msigdb %>%
-		dplyr::select(gs_name, entrez_gene, human_gene_symbol, database, description) %>%
+		dplyr::select(gs_name, entrez_gene, human_gene_symbol, database) %>%
 		as.data.frame()
 	# change column names
-	colnames(msigdb_long) <- c("ont", "gene", "symbol", "database", "description")
+	colnames(msigdb_long) <- c("ont", "gene", "symbol", "database")
 	# write TSV file of msigdb
 	# write_tsv(msigdb_long, paste0(out_dir, "/", prefix, "msigdb_long.tsv"))
 	msigdb_long$database <- factor(msigdb_long$database)
@@ -353,7 +369,7 @@ if (enable_GSEA == TRUE  & check_gsea == TRUE){
 
 	check_msigdb_list <- function(msigdbs_list){
 		mcheck <- TRUE
-		db_names <- c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6", "c7", "c8", "h","all")
+		db_names <- c("c1", "c2_cgp", "c2_cp", "c2_cp_biocarta", "c2_cp_kegg", "c2_cp_pid", "c2_cp_reactome", "c2_cp_wikipathways", "c3_mir_mir_legacy", "c3_mir_mirdb","c3_tft_gtrd", "c3_tft_tft_legacy", "c4_cgn", "c4_cm", "c5_go_bp", "c5_go_cc", "c5_go_mf", "c5_hpo", "c6","c7_immunesigdb", "c7_vax", "c8", "h","all")
 		for (i in 1:length(msigdbs_list)){
 			if (!msigdbs_list[i] %in% db_names){
 			mcheck <- FALSE
@@ -363,7 +379,7 @@ if (enable_GSEA == TRUE  & check_gsea == TRUE){
 	}
 
 	if (check_msigdb_list(msigdbs_list) == FALSE){
-	print("ERROR: MSigDB entry is not valid. Check the spelling of Molecular Signatures databases. Check that there are no spaces between database names.")
+	print("ERROR: MSigDB entry is not valid. Check the spelling of Molecular Signatures databases and make sure that there are no spaces between database names. Valid entries include: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb,c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6,c7_immunesigdb, c7_vax, c8, h, all." )
 	quit(status=1)
 	}
 
@@ -382,11 +398,20 @@ if (enable_GSEA == TRUE  & check_gsea == TRUE){
 		method="lfc"
 	}
 
+	# Save the ranking method to the parameter file
 	parameters_towrite <- rbind(parameters_towrite,c("GSEA ranking method:",method))
+
+	# Check if a custom gene set file was provided - check that it is not NULL and 
+	if (!is.null(CUSTOM_GS) && nzchar(CUSTOM_GS)) {
+ 	 validated_df <- check_custom_GS_file(CUSTOM_GS,orgdb)
+  	# You can then proceed using validated_df
+	}else{validated_df <- NULL}
+	
+
 	sorted_preranked_df <- tk_create_prerank(t_d1,method=method,logFC_col = which(colnames(t_d1) == "log2FC"),padj_col = which(colnames(t_d1) == "PValue"))
 	print(msigdbs_list)
 	# Run GSEA
-	tk_enricher_gsea(sorted_preranked_df, msigdb_long, qvalue_threshold = 0.05, database_types = msigdbs_list, num_cat=num_terms,project_dir=project_dir,nperm=nPerm)
+	tk_enricher_gsea(sorted_preranked_df, msigdb_long, qvalue_threshold = 0.05, database_types = msigdbs_list, num_cat=num_terms,project_dir=project_dir,nperm=nPerm,custom_GS=validated_df)
 }
 
 
@@ -433,11 +458,18 @@ parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used 
 }else{
 parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used for the Ontology analyses given the FDR, fold change, and topX gene parameter settings:",as.character(num_genes)))
 }
+
+# determine the number of DEGs used for ontology analyses
+if (length(genes) <= num_genes){ 
+parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used for the Ontology analyses given the FDR, fold change, and topX gene parameter settings:",length(genes)))
+}else{
+parameters_towrite <- rbind(parameters_towrite,c("Number of DEGs that were used for the Ontology analyses given the FDR, fold change, and topX gene parameter settings:",as.character(num_genes)))
+}
 # Perform GO, KEGG, and Reactome on top X genes
 genes <- genes[1:num_genes]
 genes <- na.omit(genes)
 print(genes)
-print(paste0("After applying clusterProfiler FDR, log2FC, and topX gene filters ,",length(genes)," genes will be used for GO, KEGG, and Reactome database ORA."))
+print(paste0("After applying clusterProfiler FDR, log2FC, and topX gene filters, ",length(genes)," genes will be used for GO, KEGG, and Reactome database ORA."))
 write.table(parameters_towrite,paste0(out_dir,"/Parameter_settings.txt"),sep="\t",quote=FALSE,row.names=FALSE)
 
 if (length(genes) < 30){
@@ -611,13 +643,6 @@ reactome_enrich <- enrichPathway(gene = genes, # filtered DE gene list
                  minGSSize = 5, # min number of genes annotated by ontology in gene set
                  maxGSSize = 500, # max number of genes annotated by ontology in gene set
                  qvalueCutoff = 0.2,
-		 readable = TRUE)
-}else{
-reactome_enrich <- enrichPathway(gene = genes, # filtered DE gene list
-                 organism     = reactome_org,
-                 pvalueCutoff = pv_ont,
-                 pAdjustMethod = "BH", # Benjamini-Hochberg correction of p-value (false discovery rate)
-                 minGSSize = 5, # min number of genes annotated by ontology in gene set
                  maxGSSize = 500, # max number of genes annotated by ontology in gene set
                  qvalueCutoff = 0.2,
                  readable = TRUE)

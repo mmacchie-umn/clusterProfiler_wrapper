@@ -135,10 +135,12 @@ tk_create_prerank <- function(tibble, method = NULL, logFC_col = NULL, padj_col 
     tibble$minuslog10pval[which(tibble$minuslog10pval == "Inf")] <- 300
     # Create the prerank_metric: -log10pval * fold change sign
     tibble <- add_column(tibble, "prerank_metric" = (tibble$minuslog10pval * tibble$log2FoldChange_sign))
+    tibble <- add_column(tibble, "abs_fc" = abs(tibble[[logFC_col]]))
+
     # Remove genes that have p values with "NA"
     tibble <- tibble[!(is.na(tibble$minuslog10pval)), ]
     if (sort == TRUE) {
-      tibble <- tibble[order(tibble$prerank_metric, decreasing = TRUE), ]
+      tibble <- tibble[order(-tibble$prerank_metric, -tibble$abs_fc), ]
     }
     return(tibble)
   } else if (method == "lfc") {
@@ -224,6 +226,44 @@ GSEA_dotplot <- function(gsea_results_df,num_cat2){
 
 
 # ---------------------------------------------------------------------
+# Check Custom GSEA file 
+# ---------------------------------------------------------------------
+
+check_custom_GS_file <- function(file,orgdb) {
+  # Try to read the file, catching errors if file not found
+  df <- tryCatch(
+    read.table(file, header = TRUE, sep = "\t", stringsAsFactors = FALSE),
+    error = function(e) {
+      stop("Custom gene set file not found: ", file)
+    }
+  )
+  # Check number of columns
+  if (ncol(df) != 2) {
+    stop("GSEA error - the custom gene set file provided must have exactly 2 columns and be tab-delimited. column 1 must have gene set name and column 2 must have the gene IDs in gene SYMBOL format.")
+  }
+
+  # Check headers
+  if (!all(colnames(df) == c("database", "gene"))) {
+    stop("GSEA error - Column headers in the custom gene set file provided. Column 1 header must be 'database' and column 2 header must be 'gene'. They must contain the gene set ID and gene IDs in gene SYMBOL format, respectively.")
+  }
+  ## Add new columns
+  # copy the gene symbol column to "gene" column
+  df$symbol <- df$gene
+  test <-  bitr(df$symbol, fromType = "SYMBOL", toType=c('ENTREZID'), OrgDb=orgdb)
+  df_merge <- merge(df, test, by.x = "gene", by.y = "SYMBOL")
+  df <- df_merge[,c(2,4,3)]
+  # change the gene set column header to "ont"
+  colnames(df)[1:3] <- c("ont","gene","symbol")
+  # Create a database column and set the values to "custom"
+  df$database <- "custom"
+  #df$description <- "custom_gene_set_supplied_by_user"
+  ## Add a "Custom_" prefix to the gene set names
+  # df$database <- paste0("Custom_",df$database)
+  return(df)
+}
+
+
+# ---------------------------------------------------------------------
 # GSEA functions
 # ---------------------------------------------------------------------
 
@@ -242,7 +282,7 @@ GSEA_TryCatch <- function(prl,mdb,nperm){
   )
 }
 
-tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 0.05, database_types = levels(fmsigdb_long$database), num_cat,project_dir,nperm) {
+tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 0.05, database_types = levels(msigdb_long$database), num_cat,project_dir,nperm,custom_GS=NULL) {
   
   prerank_gene_list <- sorted_prerank_df$prerank_metric
   names(prerank_gene_list) <- as.character(sorted_prerank_df$ENTREZID)
@@ -257,22 +297,26 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
   
   gsea_msigdb_df <- data.frame()
   gsea_msigdb_list <- list()
-  for (dbt in seq_along(database_types)) {
-    # get only one database type at a time
-    # Print database name
-    print(database_types[dbt])
-    msigdb_long_curr <- filter(msigdb_long, database == database_types[dbt])
-    # Print the number of gene sets in database
-    print(length(levels(factor(msigdb_long_curr$ont))))
-    set.seed(123)
+#  for (dbt in seq_along(database_types)) {
+#    # get only one database type at a time
+#    # Print database name
+#    print(database_types[dbt])
+#    msigdb_long_curr <- filter(msigdb_long, database == database_types[dbt])
+#    # Print the number of gene sets in database
+#    print(length(levels(factor(msigdb_long_curr$ont))))
+  if(is.null(custom_GS)==FALSE){
+	msigdb_long_curr <- rbind(custom_GS,msigdb_long)
+  }else{msigdb_long_curr <- msigdb_long}
+
+  set.seed(123)
     
     ##gsea_msigdb_curr <- clusterProfiler::GSEA(prerank_gene_list, TERM2GENE = msigdb_long_curr, minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5, seed=TRUE, pAdjustMethod = "BH")
     gsea_msigdb_curr <- GSEA_TryCatch(prerank_gene_list,msigdb_long_curr,nperm)
-    ##if (length(gsea_msigdb_curr$ID) > 0) {
+#    ##if (length(gsea_msigdb_curr$ID) > 0) {
     if (is.null(gsea_msigdb_curr) == FALSE & length(gsea_msigdb_curr$ID) > 0){
       gsea_msigdb_curr <- setReadable(gsea_msigdb_curr, OrgDb = orgdb, keyType = "ENTREZID")
-      gsea_msigdb_curr@result$gene_set_database <- database_types[dbt]
-      gsea_msigdb_curr@result$gene_set_description <- msigdb_long$description[match(gsea_msigdb_curr$ID, msigdb_long$ont)]
+#      gsea_msigdb_curr@result$gene_set_database <- database_types[dbt]
+#      gsea_msigdb_curr@result$gene_set_description <- msigdb_long$description[match(gsea_msigdb_curr$ID, msigdb_long$ont)]
       # Sometimes with only 1 signif geneset, the qvalues are logical with NA. This causes problems when plotting
       if (!is.logical(gsea_msigdb_curr@result$qvalue)) {
         gsea_msigdb_curr_signif_df <- gsea_msigdb_curr[gsea_msigdb_curr@result$qvalue <= qvalue_threshold, ]
@@ -282,10 +326,10 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
         gsea_msigdb_curr_signif_df <- gsea_msigdb_curr[gsea_msigdb_curr@result$p.adjust <= qvalue_threshold, ]
         gsea_msigdb_curr_signif_df <- gsea_msigdb_curr_signif_df[order(gsea_msigdb_curr_signif_df$p.adjust, decreasing = FALSE), ]
       }
-      # Combine results from curr df into full df
-      gsea_msigdb_df <- rbind(gsea_msigdb_df, gsea_msigdb_curr_signif_df)
-      # Combine results from curr database to all others
-      gsea_msigdb_list[[database_types[dbt]]] <- gsea_msigdb_curr
+#      # Combine results from curr df into full df
+#      gsea_msigdb_df <- rbind(gsea_msigdb_df, gsea_msigdb_curr_signif_df)
+#      # Combine results from curr database to all others
+#      gsea_msigdb_list[[database_types[dbt]]] <- gsea_msigdb_curr
       
       
       ##------------save dotplot of signif gsea results and image height and width info------------------##
@@ -305,9 +349,10 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
         new_h <- 0.24*(nt)+5.04
         print(new_h)
         print(new_w)
-        if (!dir.exists(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
-        pdf(paste0(project_dir,"/msigdb_gsea/Dotplot_GSEA_",database_types[dbt],".pdf"), width = new_w, height = new_h)
-        print(GSEA_dotplot(gsea_msigdb_curr_signif_df,nt))
+        if (!dir.exists(paste0(project_dir,"/msigdb_gsea/"))){dir.create(paste0(project_dir,"/msigdb_gsea/"),recursive = TRUE)}
+#        if (!dir.exists(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
+#        pdf(paste0(project_dir,"/msigdb_gsea/Dotplot_GSEA_",database_types[dbt],".pdf"), width = new_w, height = new_h)
+	pdf(paste0(project_dir,"/msigdb_gsea/Dotplot_GSEA_Results.pdf"), width = new_w, height = new_h)
         Sys.sleep(10)
         dev.off()
         ##-------------------------------------------------------------------##
@@ -319,20 +364,20 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
         } else {
           nes_direction <- "neg"
         }
-        #if (!dir.exists(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
-        pdf(paste0(project_dir,"/msigdb_gsea/", database_types[dbt], "/", str_pad(j, 4, pad = "0"), "_", nes_direction, "_", gsea_msigdb_curr_signif_df$ID[j], ".pdf"))
-        print(gseaplot(gsea_msigdb_curr, gsea_msigdb_curr_signif_df$ID[j], title = paste0(gsea_msigdb_curr_signif_df$ID[j], "\n", "NES = ", round(gsea_msigdb_curr_signif_df$NES[j], 4), "\n", "qvalue = ", round(gsea_msigdb_curr_signif_df$qvalue[j], 4))))
+#        #if (!dir.exists(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]))) {dir.create(paste0(project_dir,"/msigdb_gsea/", database_types[dbt]), recursive = TRUE)}
+#        pdf(paste0(project_dir,"/msigdb_gsea/", database_types[dbt], "/", str_pad(j, 4, pad = "0"), "_", nes_direction, "_", gsea_msigdb_curr_signif_df$ID[j], ".pdf"))
+      	pdf(paste0(project_dir,"/msigdb_gsea/", str_pad(j, 4, pad = "0"), "_", nes_direction, "_", gsea_msigdb_curr_signif_df$ID[j], ".pdf"))
+      	print(gseaplot(gsea_msigdb_curr, gsea_msigdb_curr_signif_df$ID[j], title = paste0(gsea_msigdb_curr_signif_df$ID[j], "\n", "NES = ", round(gsea_msigdb_curr_signif_df$NES[j], 4), "\n", "qvalue = ", round(gsea_msigdb_curr_signif_df$qvalue[j], 4))))
         dev.off()
       }
       
     }
     
-  }
   if (dim(gsea_msigdb_df)[1] > 0){
   # Clean up and sort data frame, export to Excel file
   gsea_msigdb_df <- gsea_msigdb_df[order(gsea_msigdb_df$qvalue, decreasing = FALSE), ]
-  gsea_msigdb_df$Description <- NULL
-  class(gsea_msigdb_df$gene_set_description) <- "hyperlink"
+#  gsea_msigdb_df$Description <- NULL
+#  class(gsea_msigdb_df$gene_set_description) <- "hyperlink"
   
   prerank_excel <- as.data.frame(sorted_prerank_df)
   #print(head(prerank_excel))
@@ -353,7 +398,7 @@ tk_enricher_gsea <- function(sorted_prerank_df, msigdb_long, qvalue_threshold = 
   write_tsv(gsea_msigdb_df, paste0(project_dir,"/suppl_files/gsea_msigdb.tsv"))
   write_tsv(prerank_excel_short, paste0(project_dir,"/suppl_files/prerank_less_cols.tsv"))
   write_tsv(prerank_excel, paste0(project_dir,"/suppl_files/prerank.tsv"))
-  return(gsea_msigdb_list)
+#  return(gsea_msigdb_list)
   }
 }
 
