@@ -5,7 +5,7 @@ The clusterprofiler wrapper is an R script that can be run from the commandline 
 
 For ORA, it will take the top 500 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
 
-For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
+For GSEA, it will rank all tested genes [ranks by -log2(PValue)x sign of fold change by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
 
 
 
@@ -39,10 +39,10 @@ The script will:
 --- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
+To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by -log2(PValue)x sign of fold change. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
-	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod lfc
 
 #### Example command to run GSEA (ranking genes by -log(Pval)*FC direction):
 	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod pval
