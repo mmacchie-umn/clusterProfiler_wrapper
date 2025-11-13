@@ -135,7 +135,7 @@ GSEA-specific options
 v2.2
 - New Feature: Custom gene sets can be provided for GSEA
 - Default Parameter Change: Default for top genes for ORA has changed from 200 to 500.
-- Default Parameter Change: Default ranking of genes for GSEA has changed from "lfc" (log2FC) and "pval" (log10PValue).
+- Default Parameter Change: Default ranking of genes for GSEA has changed from "lfc" (log2FC) and "pval" (log10PValue * sign of log2FC).
 - Improvement on GSEA ranking: ranking by p-value ranks genes first by -log10(Pvalue), but if there are genes that are tied in rank, those genes will then be sorted by log2FC magnitude.
 - Improvement on GSEA statistics: All msigdb collections (+ any custom gene sets) tested for GSEA are tested all together instead of separately.
 - updated .libPaths() to MSI software R library folder
