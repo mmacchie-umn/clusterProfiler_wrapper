@@ -5,7 +5,7 @@ The clusterprofiler wrapper is an R script that can be run from the commandline 
 
 For ORA, it will take the top 500 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
 
-For GSEA, it will rank all tested genes [ranks by -log2(PValue)x sign of fold change by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
+For GSEA, it will rank all tested genes [ranks by -log10(PValue)x sign of fold change by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
 
 
 
@@ -107,18 +107,22 @@ Options:
 	--keggpathview=KEGGPATHVIEW
 		Enable KEGG pathview plots for KEGG terms (TRUE/FALSE). [ORA option]
 
+GSEA-specific options
 	--gsea=GSEA
-		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA option]
+		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA 		option]
 
 	--msigdbs=MSIGDBS
-		Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp [GSEA option]
+                Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise 			default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, 		c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: 			http://www.gsea-msigdb.org/gsea/msigdb/index.jsp  [GSEA option]
 
-	--prerankMethod=PRERANKMETHOD
-		Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA option]
+        --prerankMethod=PRERANKMETHOD
+                Method of ranking gene list for GSEA. 'pval' (default) will sort by -log10(pval) * (sign of fold change), and 'lfc' will sort by log2(fold change). Note: if P-value 			column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA option]
 
-	--numPermutations=CHARACTER
-		Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA option]
+        --numPermutations=CHARACTER
+                Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA option]
 
+        --customGSEAgeneSet=CHARACTER
+                A 2-column tab-delimited file containing a custom gene set to include alongside the gene sets specified by the --msigsdb option. column 1 should contain the name of the 		custom gene set. The header of this column should be 'database'. column 2 should contain the genes (in gene SYMBOL format) that are within the custom gene set. The header 		of column 2 should be set to 'gene'. [GSEA option]
+		
 	-h, --help
 		Show this help message and exit
 
