@@ -7,7 +7,7 @@ For ORA, it will take the top 500 genes [can be adjusted] in the differential ge
 
 For GSEA, it will rank all tested genes [ranks by -log10(PValue)x sign of fold change by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
 
-
+![](clusterprofiler_figure2.png)
 
 ### Required arguments:
 The wrapper script requires three arguments to perform over-representation analysis (ORA) against pathways in three databases:
@@ -131,7 +131,6 @@ Options:
 --- 
 ## clusterProfiler_wrapper version updates
 
-![](clusterprofiler_figure2.png)
 
 v2.2
 - New Feature: Custom gene sets can be provided for GSEA
