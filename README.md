@@ -62,10 +62,13 @@ Note: This may not work well for organisms that are not human and mouse.
 
 **GSEA Output:**    
 
-GSEA will generate an output folder called `msigdb_gsea`. Contained within the `msigdb_gsea` folder are folders corresponding to each msigdb collection/database that was tested against. These folders contain GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and the running sum statistic along the ranked list.
-1) **Dotplot_GSEA_[collection/database].pdf** : A dotplot showing the enriched pathways from a collection/database, split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
+GSEA will generate an output folders called `msigdb_gsea` and `suppl_files`. Contained within the `msigdb_gsea` folder are the following files along with a folder containing GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and the running sum statistic along the ranked list.
+1) **Dotplot_GSEA_Results.pdf** : A dotplot showing the enriched pathways from all the collections/databases tested. Pathways are split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
 2) **msigdb_gsea.xlsx**: An excel file containing all of the enrichment results for each database.
+3) **gseaplots**: A folder containing GSEA plots for each enriched term.
 
+
+The `suppl_files` folder contains a file with the pre-ranked genes and their calculated pre-rank metrics that were used as input for GSEA.
 
 --- 
 
@@ -135,7 +138,7 @@ Options:
 v2.2
 - New Feature: Custom gene sets can be provided for GSEA
 - Default Parameter Change: Default for top genes for ORA has changed from 200 to 500.
-- Default Parameter Change: Default ranking of genes for GSEA has changed from "lfc" (log2FC) and "pval" (log10PValue * sign of log2FC).
+- Default Parameter Change: Default ranking of genes for GSEA has changed from "lfc" (log2FC) to "pval" (log10PValue * sign of log2FC).
 - Improvement on GSEA ranking: ranking by p-value ranks genes first by -log10(Pvalue), but if there are genes that are tied in rank, those genes will then be sorted by log2FC magnitude.
 - Improvement on GSEA statistics: All msigdb collections (+ any custom gene sets) tested for GSEA are tested all together instead of separately.
 - updated .libPaths() to MSI software R library folder
