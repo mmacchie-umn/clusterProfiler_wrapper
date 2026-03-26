@@ -39,7 +39,7 @@ The script will:
 --- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by -log2(PValue)x sign of fold change. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
+To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by -log2(PValue)x sign of fold change. To change the ranking metric to log2(fold change), include `--prerankMethod lfc` in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
 	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod lfc
@@ -53,7 +53,7 @@ To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in 
 
 **Important default settings for GSEA:**    
 The GSEA code will:   
-1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the `--prerankMethod pval` option.  
+1) Rank genes by the metric selected. Default is pval. Can change this to rank by log2FC by including the `--prerankMethod lfc` option. If no "Pvalue" column is provided in the DEG table, will automatically rank by log2FC.
 2) Perform GSEA against the Hallmark collection by default. Can change the database with the `--msigdbs` option. To run it against all databases, use `--msigdbs all` or provide a comma-separated list of databases (e.g. `--msigdbs h,c2_cp_kegg,c5_go_bp,c2_cp_reactome`) .
 3) Generates GSEAplots, doplots, and GSEA tables of the results.
 
