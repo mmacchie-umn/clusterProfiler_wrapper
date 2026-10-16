@@ -1,14 +1,13 @@
 
-# ClusterProfiler Wrapper 2.1
+# ClusterProfiler Wrapper 2.2
 
 The clusterprofiler wrapper is an R script that can be run from the commandline on the MSI. It uses the clusterprofiler R package functions under-the-hood to streamline pathway analysis (over-representation analysis and GSEA) when provided a bulk RNA-seq differential gene expression test results table.
 
-For ORA, it will take the top 200 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
+For ORA, it will take the top 500 genes [can be adjusted] in the differential gene expression table and perform ORA against pathways in three databases: Gene Ontology (GO), Kyoto Encyclopedia of Genes and Genomes (KEGG), and REACTOME.   
 
-For GSEA, it will rank all tested genes [ranks by log2FC by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
+For GSEA, it will rank all tested genes [ranks by -log10(PValue)x sign of fold change by default] and perform GSEA against the Hallmark database (default) from MSigDB (https://www.gsea-msigdb.org/gsea/msigdb). To perform GSEA using gene sets from other collections, see the `--msigdbs` option in the Options section.
 
-![](clusterprofiler_figure1.png)
-
+![](clusterprofiler_figure2.png)
 
 ### Required arguments:
 The wrapper script requires three arguments to perform over-representation analysis (ORA) against pathways in three databases:
@@ -25,8 +24,8 @@ Memory: at least 24GB
 **Important default settings for ORA:**   
 
 The script will:   
-1) subset the DEG table by FDR (default = 0.05, can change this value with `-p` option) and the absolute value of the log2 fold change (default = 1X, can change with `-c` option).  
-2) use the top 200 genes *after* applying the above filters (default = 200 genes, can change the number of genes with `-g` option) for ORA against pathways from the GO, KEGG, and REACTOME databases. Default significance cutoffs for enriched pathway terms is P-value < 0.05 (can be modified with `-a` option).   
+1) subset the DEG table by FDR (default = 0.05, can change this value with `-p` option) and fold change (default = 1X, can change with `-c` option).  
+2) use the top 500 genes *after* applying the above filters (default = 500 genes, can change the number of genes with `-g` option) for ORA against pathways from the GO, KEGG, and REACTOME databases. Default significance cutoffs for enriched pathway terms is P-value < 0.05 (can be modified with `-a` option).   
 3) plot all significantly enriched pathway terms (can set number of terms to plot with "-n" option. It will plot most significant terms by FDR. Can set the significance threshold for ontology terms with `-a`).   
 
 **ORA Output Files:**
@@ -40,10 +39,10 @@ The script will:
 --- 
 
 ### Gene Set Enrichment Analysis (GSEA):
-To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by log2FC. To change the ranking metric to -log(P-value) * the direction of the fold change, include `--prerankMethod pval` in the command.
+To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in the DEG table will be ranked by -log2(PValue)x sign of fold change. To change the ranking metric to log2(fold change), include `--prerankMethod lfc` in the command.
 
 #### Example command to run GSEA (ranking genes by log2FC)
-	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE
+	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod lfc
 
 #### Example command to run GSEA (ranking genes by -log(Pval)*FC direction):
 	run_clusterProfiler.R <DEG_table.tsv> <Genus_species> <GeneID_Format> --gsea TRUE --prerankMethod pval
@@ -54,7 +53,7 @@ To perform GSEA, include `--gsea TRUE` in the command. By default, all genes in 
 
 **Important default settings for GSEA:**    
 The GSEA code will:   
-1) Rank genes by the metric selected. Default is log2FC. Can change this to rank by pvalue by including the `--prerankMethod pval` option.  
+1) Rank genes by the metric selected. Default is pval. Can change this to rank by log2FC by including the `--prerankMethod lfc` option. If no "Pvalue" column is provided in the DEG table, will automatically rank by log2FC.
 2) Perform GSEA against the Hallmark collection by default. Can change the database with the `--msigdbs` option. To run it against all databases, use `--msigdbs all` or provide a comma-separated list of databases (e.g. `--msigdbs h,c2_cp_kegg,c5_go_bp,c2_cp_reactome`) .
 3) Generates GSEAplots, doplots, and GSEA tables of the results.
 
@@ -63,10 +62,13 @@ Note: This may not work well for organisms that are not human and mouse.
 
 **GSEA Output:**    
 
-GSEA will generate an output folder called `msigdb_gsea`. Contained within the `msigdb_gsea` folder are folders corresponding to each msigdb collection/database that was tested against. These folders contain GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and the running sum statistic along the ranked list.
-1) **Dotplot_GSEA_[collection/database].pdf** : A dotplot showing the enriched pathways from a collection/database, split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
+GSEA will generate an output folders called `msigdb_gsea` and `suppl_files`. Contained within the `msigdb_gsea` folder are the following files along with a folder containing GSEA plots for each enriched term that show the ranked gene list, the enrichment score, and the running sum statistic along the ranked list.
+1) **Dotplot_GSEA_Results.pdf** : A dotplot showing the enriched pathways from all the collections/databases tested. Pathways are split by whether they are activated (positive enrichment score) or suppressed (negative enrichment score).
 2) **msigdb_gsea.xlsx**: An excel file containing all of the enrichment results for each database.
+3) **gseaplots**: A folder containing GSEA plots for each enriched term.
 
+
+The `suppl_files` folder contains a file with the pre-ranked genes and their calculated pre-rank metrics that were used as input for GSEA.
 
 --- 
 
@@ -91,7 +93,7 @@ Options:
 		Report top N ontology terms [default=all] in visualizations. [ORA option]
 
 	-g CHARACTER, --numDEGs=CHARACTER
-		Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 200 genes are kept by default. [ORA option]
+		Use top X DE genes for Ontology Term enrichment Analysis. Genes with p-value less than 0.05 (or user-specified cutoff) are sorted (largest to smallest) by the absolute value of log2FC. Top 500 genes are kept by default. [ORA option]
 
 	-p CHARACTER, --FDRGenes=CHARACTER
 		FDR cutoff used for classifying differentially expressed genes. [ORA option]
@@ -108,24 +110,39 @@ Options:
 	--keggpathview=KEGGPATHVIEW
 		Enable KEGG pathview plots for KEGG terms (TRUE/FALSE). [ORA option]
 
+	** GSEA-specific options **
+ 
 	--gsea=GSEA
-		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA option]
+		Enable GSEA using msigdb (TRUE/FALSE). Default Molecular Signatures Database (msigdb) for GSEA = Hallmark (h). See --msigdbs option for other available databases. [GSEA 		option]
 
 	--msigdbs=MSIGDBS
-		Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: http://www.gsea-msigdb.org/gsea/msigdb/index.jsp [GSEA option]
+                Molecular Signatures Database (msigdb) for GSEA or comma-separated list of databases or use 'all' to run through all available databases for the species. Otherwise 			default database is hallmark (h). Available databases: c1, c2_cgp, c2_cp, c2_cp_biocarta, c2_cp_kegg, c2_cp_pid, c2_cp_reactome, c2_cp_wikipathways, c3_mir_mir_legacy, 		c3_mir_mirdb, c3_tft_gtrd, c3_tft_tft_legacy, c4_cgn, c4_cm, c5_go_bp, c5_go_cc, c5_go_mf, c5_hpo, c6, c7_immunesigdb, c7_vax, c8, h. For more information, see: 			http://www.gsea-msigdb.org/gsea/msigdb/index.jsp  [GSEA option]
 
-	--prerankMethod=PRERANKMETHOD
-		Method of ranking gene list for GSEA. pval will sort by -log10(pval) * (direction of fold change), and lfc will sort by log2(fold change). Note: if FDR column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA option]
+        --prerankMethod=PRERANKMETHOD
+                Method of ranking gene list for GSEA. 'pval' (default) will sort by -log10(pval) * (sign of fold change), and 'lfc' will sort by log2(fold change). Note: if P-value 			column is not provided, it will automatically sort by log2FC. Check the parameter_setting.txt file to check the method run. [GSEA option]
 
-	--numPermutations=CHARACTER
-		Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA option]
+        --numPermutations=CHARACTER
+                Number of times ranked genes are permutated for GSEA. At least 10k permutations are recommended. Default = 10,000. [GSEA option]
 
+        --customGSEAgeneSet=CHARACTER
+                A 2-column tab-delimited file containing a custom gene set to include alongside the gene sets specified by the --msigsdb option. column 1 should contain the name of the 		custom gene set. The header of this column should be 'database'. column 2 should contain the genes (in gene SYMBOL format) that are within the custom gene set. The header 		of column 2 should be set to 'gene'. [GSEA option]
+		
 	-h, --help
 		Show this help message and exit
 
 
 --- 
 ## clusterProfiler_wrapper version updates
+
+
+v2.2
+- New Feature: Custom gene sets can be provided for GSEA
+- Default Parameter Change: Default for top genes for ORA has changed from 200 to 500.
+- Default Parameter Change: Default ranking of genes for GSEA has changed from "lfc" (log2FC) to "pval" (log10PValue * sign of log2FC).
+- Improvement on GSEA ranking: ranking by p-value ranks genes first by -log10(Pvalue), but if there are genes that are tied in rank, those genes will then be sorted by log2FC magnitude.
+- Improvement on GSEA statistics: All msigdb collections (+ any custom gene sets) tested for GSEA are tested all together instead of separately.
+- updated .libPaths() to MSI software R library folder
+
 
 v2.1
 - Fixed KEGG database issues (updated clusterprofiler R package)
